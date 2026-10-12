@@ -7,15 +7,6 @@ import { useAuth } from "@/components/AuthProvider";
 import { motion, AnimatePresence } from "framer-motion";
 import { Camera, CheckCircle2, Copy, Save, User, AlertCircle, Trash2, Edit2, X, Loader2 } from "lucide-react";
 
-const getResumeFileName = (urlOrName: string) => {
-  if (!urlOrName) return "";
-  if (urlOrName.startsWith("http") || urlOrName.includes("/")) {
-    const raw = urlOrName.split("/").pop()?.split("?")[0] || "";
-    return raw.replace(/^\d+-/, "") || raw;
-  }
-  return urlOrName;
-};
-
 export function StudentProfile({ user }: { user: AuthUser | null }) {
   const { updateProfile } = useAuth();
   const safeUser = user ?? {
@@ -47,21 +38,18 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
     updatedAt: "",
     __v: 0,
     referralCode: "",
-    cvFile: safeUser.resumeUrl || safeUser.resume || safeUser.cvFile || "",
-    cvFileName: safeUser.cvFileName || (safeUser.resumeUrl || safeUser.resume ? getResumeFileName(safeUser.resumeUrl || safeUser.resume || "") : ""),
+    cvFile: safeUser.cvFile || "",
+    cvFileName: safeUser.cvFileName || "",
   });
   const [photo, setPhoto] = useState<string | null>(safeUser.profileImageUrl || safeUser.profileImage || safeUser.profilePhoto || null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [isPhotoDeleted, setIsPhotoDeleted] = useState(false);
-  const [cvFileObj, setCvFileObj] = useState<File | null>(null);
-  const [isCvDeleted, setIsCvDeleted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isPaymentVerified, setIsPaymentVerified] = useState(false);
   const [hasSubmittedPayment, setHasSubmittedPayment] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
-  const [fileSizeError, setFileSizeError] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [initialData, setInitialData] = useState({
     phone: "",
@@ -69,7 +57,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
     github: "",
     portfolio: "",
     walletAddress: "",
-    resume: "",
   });
 
   const [mounted, setMounted] = useState(false);
@@ -79,7 +66,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
 
   // Delete Account modal state
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [hasDeleteTicketRequested, setHasDeleteTicketRequested] = useState(false);
   const [isSubmittingTicket, setIsSubmittingTicket] = useState(false);
   const [deleteError, setDeleteError] = useState("");
   const [deleteForm, setDeleteForm] = useState({
@@ -88,24 +74,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
     courseType: "Student",
     reason: "",
   });
-
-  const checkDeleteTicketStatus = (userEmail?: string) => {
-    const targetEmail = (userEmail || formData.email || safeUser.email || "").trim().toLowerCase();
-    if (!targetEmail) return;
-
-    if (typeof window !== "undefined") {
-      if (localStorage.getItem(`mst_delete_ticket_raised_${targetEmail}`) === "true") {
-        setHasDeleteTicketRequested(true);
-      }
-    }
-  };
-
-  useEffect(() => {
-    const targetEmail = (formData.email || safeUser.email || "").trim().toLowerCase();
-    if (targetEmail) {
-      checkDeleteTicketStatus(targetEmail);
-    }
-  }, [formData.email, safeUser.email]);
 
   useEffect(() => {
     if (!isDeleteModalOpen) return;
@@ -129,10 +97,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
   };
 
   const handleOpenDeleteModal = () => {
-    if (hasDeleteTicketRequested) {
-      showToast("You have already raised a delete account ticket. Admin will review your request.", "error");
-      return;
-    }
     const currentName = formData.fullName || formData.name || safeUser.fullName || "";
     const currentEmail = formData.email || safeUser.email || "";
     const currentRole = formData.role || safeUser.role || "";
@@ -148,10 +112,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
 
   const handleRaiseDeleteTicket = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (hasDeleteTicketRequested) {
-      setDeleteError("A delete account ticket has already been submitted and is pending review.");
-      return;
-    }
     if (!deleteForm.reason.trim()) {
       setDeleteError("Please provide a reason for deletion.");
       return;
@@ -200,11 +160,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
       }
 
       showToast(data?.message || "Delete account ticket raised successfully. Admin will review your request.", "success");
-      setHasDeleteTicketRequested(true);
-      const submittedEmail = (deleteForm.email || formData.email || safeUser.email || "").trim().toLowerCase();
-      if (submittedEmail && typeof window !== "undefined") {
-        localStorage.setItem(`mst_delete_ticket_raised_${submittedEmail}`, "true");
-      }
       setIsDeleteModalOpen(false);
       setDeleteForm({
         name: "",
@@ -249,8 +204,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
           if (data?.user) {
             const rejectionNote = data.user.studentRejectionNote || data.user.rejectionNote || "";
             const isActuallyVerified = !rejectionNote && (data.user.studentVerificationStatus === "Completed" || !!data.user.isStudentVerified);
-            const resumeVal = data.user.resumeUrl || data.user.resume || data.user.cvFile || data.user.cv || "";
-            const resumeFileNameVal = data.user.cvFileName || (resumeVal ? getResumeFileName(resumeVal) : "");
 
             setFormData(prev => ({
               ...prev,
@@ -274,8 +227,8 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
               updatedAt: data.user.updatedAt || prev.updatedAt,
               __v: data.user.__v !== undefined ? data.user.__v : prev.__v,
               referralCode: data.user.referralCode || prev.referralCode,
-              cvFile: resumeVal || prev.cvFile,
-              cvFileName: resumeFileNameVal || prev.cvFileName,
+              cvFile: data.user.cvFile || prev.cvFile,
+              cvFileName: data.user.cvFileName || prev.cvFileName,
             }));
             setInitialData({
               phone: data.user.mobileNumber || data.user.phone || "",
@@ -283,7 +236,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
               github: data.user.githubProfile || data.user.github || "",
               portfolio: data.user.portfolioWebsite || data.user.portfolio || "",
               walletAddress: data.user.walletAddress || "",
-              resume: resumeVal || "",
             });
             const pic = data.user.profileImageUrl || data.user.profileImage || data.user.profilePhoto;
             if (pic) {
@@ -293,24 +245,11 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
               profilePaymentVerified = true;
               setIsPaymentVerified(true);
             }
-            if (data.user.email) {
-              checkDeleteTicketStatus(data.user.email);
-            }
-            if (data.user.isDeleteRequested || data.user.hasDeleteTicket || data.user.deleteRequestPending) {
-              setHasDeleteTicketRequested(true);
-            }
             // Update auth provider user state with latest info
             updateProfile({
               isStudentVerified: isActuallyVerified,
               studentRejectionNote: rejectionNote,
               studentVerificationStatus: data.user.studentVerificationStatus,
-              profileImage: pic || "",
-              profileImageUrl: pic || "",
-              profilePhoto: pic || "",
-              resume: resumeVal || "",
-              resumeUrl: data.user.resumeUrl || resumeVal || "",
-              cvFile: resumeVal || "",
-              cvFileName: resumeFileNameVal || "",
             });
           }
         }
@@ -390,7 +329,7 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setFileSizeError("Your file size is more than 5MB. Please upload a proper file up to 5MB.");
+        alert("Your file size is more than 5MB. Please upload a proper file up to 5MB.");
         e.target.value = "";
         return;
       }
@@ -414,12 +353,10 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setFileSizeError("Your file size is more than 5MB. Please upload a proper file up to 5MB.");
+        alert("Your file size is more than 5MB. Please upload a proper file up to 5MB.");
         e.target.value = "";
         return;
       }
-      setCvFileObj(file);
-      setIsCvDeleted(false);
       const reader = new FileReader();
       reader.onloadend = () => {
         setFormData(prev => ({
@@ -432,23 +369,11 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
     }
   };
 
-  const handleCvDelete = () => {
-    setCvFileObj(null);
-    setIsCvDeleted(true);
-    setFormData(prev => ({
-      ...prev,
-      cvFile: "",
-      cvFileName: ""
-    }));
-    const fileInput = document.getElementById('cvUploadInput') as HTMLInputElement;
-    if (fileInput) fileInput.value = '';
-  };
-
   const handleIdCardReupload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        setFileSizeError("Your file size is more than 5MB. Please upload a proper file up to 5MB.");
+        alert("Your file size is more than 5MB. Please upload a proper file up to 5MB.");
         e.target.value = "";
         return;
       }
@@ -525,14 +450,10 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
 
     if (!formData.linkedin || formData.linkedin.trim() === "") {
       newErrors.linkedin = "LinkedIn Profile cannot be empty.";
-    } else if (!/^(https?:\/\/)?(www\.)?linkedin\.com\/.+$/i.test(formData.linkedin.trim())) {
-      newErrors.linkedin = "Please enter a valid LinkedIn URL.";
     }
 
     if (!formData.github || formData.github.trim() === "") {
       newErrors.github = "GitHub Profile cannot be empty.";
-    } else if (!/^(https?:\/\/)?(www\.)?github\.com\/.+$/i.test(formData.github.trim())) {
-      newErrors.github = "Please enter a valid GitHub URL.";
     }
 
     if (!formData.walletAddress || formData.walletAddress.trim() === "") {
@@ -576,28 +497,21 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
         bodyData.profilePhoto = "";
       }
 
-      if (isCvDeleted) {
-        bodyData.resume = "";
-      }
-
-      if (Object.keys(bodyData).length === 0 && !photoFile && !cvFileObj && !isPhotoDeleted && !isCvDeleted) {
+      if (Object.keys(bodyData).length === 0 && !photoFile && !isPhotoDeleted) {
         showToast("Profile updated successfully", "success");
         setSaving(false);
         return;
       }
 
       let response;
-      if (photoFile || cvFileObj) {
+      if (photoFile) {
         const formDataToSend = new FormData();
-        if (photoFile) formDataToSend.append("profileImage", photoFile);
-        if (cvFileObj) formDataToSend.append("resume", cvFileObj);
+        formDataToSend.append("profileImage", photoFile);
         if (bodyData.mobileNumber) formDataToSend.append("mobileNumber", bodyData.mobileNumber);
         if (bodyData.githubProfile) formDataToSend.append("githubProfile", bodyData.githubProfile);
         if (bodyData.linkedinProfile) formDataToSend.append("linkedinProfile", bodyData.linkedinProfile);
         if (bodyData.portfolioWebsite) formDataToSend.append("portfolioWebsite", bodyData.portfolioWebsite);
         if (bodyData.walletAddress) formDataToSend.append("walletAddress", bodyData.walletAddress);
-        if (isPhotoDeleted) formDataToSend.append("profileImage", "");
-        if (isCvDeleted) formDataToSend.append("resume", "");
 
         const headers: Record<string, string> = {};
         if (token) {
@@ -643,8 +557,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
         const updatedGithub = data.user.githubProfile || data.user.github || "";
         const updatedPortfolio = data.user.portfolioWebsite || data.user.portfolio || "";
         const updatedWalletAddress = data.user.walletAddress || "";
-        const updatedResume = data.user.resumeUrl || data.user.resume || data.user.cvFile || (isCvDeleted ? "" : formData.cvFile);
-        const updatedResumeName = data.user.cvFileName || (isCvDeleted ? "" : (cvFileObj?.name || (updatedResume ? getResumeFileName(updatedResume) : "")));
         const updatedPhoto = isPhotoDeleted ? null : (data.user.profileImageUrl || data.user.profileImage || data.user.profilePhoto || photo);
         finalPhoto = updatedPhoto;
 
@@ -656,8 +568,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
           github: updatedGithub,
           walletAddress: updatedWalletAddress,
           portfolio: updatedPortfolio,
-          cvFile: updatedResume,
-          cvFileName: updatedResumeName,
         }));
 
         setInitialData({
@@ -666,17 +576,12 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
           github: updatedGithub,
           portfolio: updatedPortfolio,
           walletAddress: updatedWalletAddress,
-          resume: updatedResume,
         });
 
         setPhoto(updatedPhoto);
         setPhotoFile(null);
-        setCvFileObj(null);
         if (isPhotoDeleted) {
           setIsPhotoDeleted(false);
-        }
-        if (isCvDeleted) {
-          setIsCvDeleted(false);
         }
       }
 
@@ -690,10 +595,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
         profilePhoto: finalPhoto || "",
         profileImage: finalPhoto || "",
         profileImageUrl: finalPhoto || "",
-        cvFile: formData.cvFile,
-        cvFileName: formData.cvFileName,
-        resume: formData.cvFile,
-        resumeUrl: (data?.user?.resumeUrl) || formData.cvFile,
       });
 
       showToast("Profile updated successfully", "success");
@@ -1150,44 +1051,22 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
               <label className="mb-2 block text-sm font-bold text-[var(--text-muted)]">
                 Upload CV (Max 5MB)
               </label>
-              <div className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3">
-                {!formData.cvFileName ? (
-                  <div className="flex items-center gap-3">
-                    <label
-                      htmlFor="cvUploadInput"
-                      className="cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--text-muted)] hover:border-mst-red hover:text-mst-red transition-all shrink-0 shadow-sm"
-                    >
-                      Upload CV
-                    </label>
-                    <span className="text-sm text-[var(--text-muted)]">No file chosen</span>
-                  </div>
-                ) : (
-                  <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-sm font-medium text-[var(--text)] break-all">
-                      {formData.cvFileName}
-                    </span>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <label
-                        htmlFor="cvUploadInput"
-                        className="cursor-pointer rounded-lg bg-emerald-500/10 px-3 py-1.5 text-xs font-semibold text-emerald-600 hover:bg-emerald-500/20 transition-colors"
-                      >
-                        Edit
-                      </label>
-                      <button
-                        type="button"
-                        onClick={handleCvDelete}
-                        className="cursor-pointer rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-500/20 transition-colors"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-                )}
+              <div className="flex items-center gap-3 w-full rounded-xl border border-[var(--border)] bg-[var(--border)]/30 px-4 py-2.5 opacity-70">
+                <label
+                  htmlFor="cvUploadInput"
+                  className="cursor-not-allowed rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-[var(--text-muted)] transition-all shrink-0 shadow-sm"
+                >
+                  Choose File
+                </label>
+                <span className="text-sm text-[var(--text-muted)] truncate">
+                  {formData.cvFileName ? formData.cvFileName : "No file chosen"}
+                </span>
                 <input
                   id="cvUploadInput"
                   type="file"
                   accept="image/*,.pdf,.doc,.docx"
                   className="hidden"
+                  disabled
                   onChange={handleCvUpload}
                 />
               </div>
@@ -1195,7 +1074,7 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
           </div>
 
           {/* Referral Section */}
-          <div className="rounded-xl border border-dashed border-[var(--border)] p-3.5 sm:p-4 bg-mst-red/5">
+          <div className="rounded-xl border border-dashed border-[var(--border)] p-4 bg-mst-red/5">
             <h3 className="mb-1 text-sm font-bold text-[var(--text)]">Your Referral Link</h3>
             <p className="mb-3 text-xs text-[var(--text-muted)]">Share this link with friends & get rewarded!</p>
             <div className="flex items-center gap-2">
@@ -1203,13 +1082,13 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
                 type="text"
                 readOnly
                 value={referralLink}
-                className="flex-1 min-w-0 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs sm:text-sm text-[var(--text-muted)] truncate"
+                className="flex-1 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text-muted)]"
               />
               <button
                 type="button"
                 disabled={!referralLink}
                 onClick={copyReferral}
-                className="shrink-0 flex items-center gap-1.5 sm:gap-2 rounded-lg bg-mst-red px-3 sm:px-4 py-2 text-xs sm:text-sm font-bold text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                className="flex items-center gap-2 rounded-lg bg-mst-red px-4 py-2 text-sm font-bold text-white transition hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {copied ? <CheckCircle2 size={16} /> : <Copy size={16} />}
                 {copied ? "Copied!" : "Copy"}
@@ -1217,25 +1096,19 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-t border-[var(--border)] pt-6">
+          <div className="flex items-center justify-between border-t border-[var(--border)] pt-6">
             <button
               type="button"
-              disabled={hasDeleteTicketRequested}
               onClick={handleOpenDeleteModal}
-              title={hasDeleteTicketRequested ? "Delete account ticket already raised and pending review" : "Delete Account"}
-              className={`flex items-center justify-center gap-2 rounded-xl border px-4 sm:px-6 py-3 font-bold transition shadow-sm w-full sm:w-auto text-sm sm:text-base ${
-                hasDeleteTicketRequested
-                  ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 cursor-not-allowed opacity-80"
-                  : "border-red-500/30 bg-red-600/10 hover:bg-red-600 text-red-600 hover:text-white shadow-sm active:scale-95 cursor-pointer dark:text-red-400 dark:hover:text-white"
-              }`}
+              className="flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-600/10 hover:bg-red-600 px-6 py-3 font-bold text-red-600 hover:text-white transition shadow-sm active:scale-95 cursor-pointer dark:text-red-400 dark:hover:text-white"
             >
               <Trash2 size={18} />
-              {hasDeleteTicketRequested ? "Delete Request Pending" : "Delete Account"}
+              Delete Account
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="flex items-center justify-center gap-2 rounded-xl bg-mst-red px-6 sm:px-8 py-3 font-bold text-white shadow-lg shadow-mst-red/25 transition hover:shadow-mst-red/40 hover:brightness-110 active:scale-95 disabled:opacity-70 cursor-pointer w-full sm:w-auto text-sm sm:text-base"
+              className="flex items-center gap-2 rounded-xl bg-mst-red px-8 py-3 font-bold text-white shadow-lg shadow-mst-red/25 transition hover:shadow-mst-red/40 hover:brightness-110 active:scale-95 disabled:opacity-70 cursor-pointer"
             >
               <Save size={18} />
               {saving ? "Saving..." : "Save Changes"}
@@ -1263,12 +1136,12 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
                 <button
                   type="button"
                   onClick={() => setIsDeleteModalOpen(false)}
-                  className="absolute right-3 top-3.5 rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--border)]/30 hover:text-[var(--text)] transition cursor-pointer"
+                  className="absolute right-4 top-4 rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-[var(--border)]/30 hover:text-[var(--text)] transition cursor-pointer"
                 >
                   <X size={20} />
                 </button>
 
-                <div className="flex items-center gap-3 mb-5 pr-8">
+                <div className="flex items-center gap-3 mb-5">
                   <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-500 shrink-0">
                     <Trash2 size={20} />
                   </div>
@@ -1284,13 +1157,6 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
                   <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs text-red-500">
                     <AlertCircle size={16} className="shrink-0" />
                     <span>{deleteError}</span>
-                  </div>
-                )}
-
-                {hasDeleteTicketRequested && (
-                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400">
-                    <AlertCircle size={16} className="shrink-0" />
-                    <span>A delete account ticket has already been submitted for this account and is pending review.</span>
                   </div>
                 )}
 
@@ -1345,14 +1211,13 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
                     <textarea
                       rows={4}
                       required
-                      disabled={hasDeleteTicketRequested}
                       placeholder="Please provide the reason for deletion..."
                       value={deleteForm.reason}
                       onChange={(e) => {
                         setDeleteForm(prev => ({ ...prev, reason: e.target.value }));
                         if (deleteError) setDeleteError("");
                       }}
-                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-none disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-4 py-2.5 text-sm text-[var(--text)] outline-none transition focus:border-red-500 focus:ring-1 focus:ring-red-500 resize-none"
                     />
                   </div>
 
@@ -1368,8 +1233,8 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
                     </button>
                     <button
                       type="submit"
-                      disabled={isSubmittingTicket || hasDeleteTicketRequested}
-                      className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 hover:shadow-red-600/30 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                      disabled={isSubmittingTicket}
+                      className="flex items-center gap-2 rounded-xl bg-red-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-600/20 transition hover:bg-red-700 hover:shadow-red-600/30 disabled:opacity-50 cursor-pointer"
                     >
                       {isSubmittingTicket ? (
                         <>
@@ -1377,7 +1242,7 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
                           <span>Raising Ticket...</span>
                         </>
                       ) : (
-                        <span>{hasDeleteTicketRequested ? "Ticket Submitted" : "Raise Ticket"}</span>
+                        <span>Raise Ticket</span>
                       )}
                     </button>
                   </div>
@@ -1406,43 +1271,8 @@ export function StudentProfile({ user }: { user: AuthUser | null }) {
             ) : (
               <AlertCircle className="h-5 w-5 shrink-0 text-red-400" />
             )}
-            <span className="font-semibold">{toast.message}</span>
+            <span className="text-sm font-bold text-white">{toast.message}</span>
           </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* File Size Error Modal */}
-      <AnimatePresence>
-        {fileSizeError && (
-          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/60"
-              onClick={() => setFileSizeError(null)}
-            />
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 10 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 10 }}
-              className="relative w-full max-w-sm rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl text-center"
-            >
-              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-red-500/10">
-                <AlertCircle className="h-7 w-7 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-bold text-[var(--text)]">File Too Large</h3>
-              <p className="mb-6 text-sm text-[var(--text-muted)] leading-relaxed">
-                {fileSizeError}
-              </p>
-              <button
-                onClick={() => setFileSizeError(null)}
-                className="w-full rounded-xl bg-mst-red px-4 py-3 text-sm font-bold text-white transition hover:bg-red-600 shadow-md"
-              >
-                Okay
-              </button>
-            </motion.div>
-          </div>
         )}
       </AnimatePresence>
     </motion.section>

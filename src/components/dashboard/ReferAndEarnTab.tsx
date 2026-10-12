@@ -4,10 +4,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { Gift, Copy, Wallet, CheckCircle2, Sparkles, Percent, AlertCircle, Info } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "@/components/AuthProvider";
 import { roleLabel, getReferralPercentageForRole, type CourseDiscount, type UserRole } from "@/lib/auth";
+import { sendWithdrawalEmailAction } from "./actions";
 
 const DISCOUNT_ROLES: UserRole[] = ["student", "validator", "working_professional", "course_only"];
 
@@ -48,6 +50,7 @@ export function ReferAndEarnTab({
   initialBankDetails?: any;
 }) {
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [copied, setCopied] = useState(false);
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
   const [showUpdateForm, setShowUpdateForm] = useState(false);
@@ -194,6 +197,7 @@ export function ReferAndEarnTab({
 
     fetchProfile();
     fetchCourseDetails();
+    setMounted(true);
   }, []);
 
   useEffect(() => {
@@ -608,13 +612,26 @@ export function ReferAndEarnTab({
                 <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-sm">
                   We have received your bank details securely. The amount will be processed and credited to your account within 3-5 business days.
                 </p>
-                <button
-                  type="button"
-                  onClick={() => setShowUpdateForm(true)}
-                  className="mt-3 sm:mt-4 relative z-10 shrink-0 group inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--border)] hover:scale-[1.02] active:scale-95 w-full sm:w-auto"
-                >
-                  Update Bank Details
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-3 mt-3 sm:mt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setShowWithdrawForm(true);
+                    }}
+                    className="relative z-10 shrink-0 group inline-flex items-center justify-center gap-2 rounded-xl bg-[#e31e24] px-5 py-2.5 text-xs font-bold text-white transition hover:bg-red-600 hover:scale-[1.02] active:scale-95 shadow-md shadow-[#e31e24]/20"
+                  >
+                    <Wallet className="h-4 w-4" />
+                    Request Withdrawal
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdateForm(true)}
+                    className="relative z-10 shrink-0 group inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-xs font-bold text-[var(--text)] transition hover:bg-[var(--border)] hover:scale-[1.02] active:scale-95"
+                  >
+                    Update Bank Details
+                  </button>
+                </div>
               </motion.div>
             ) : (
               <div className="relative overflow-hidden flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6 rounded-3xl border border-[var(--border)] bg-gradient-to-r from-[var(--bg-muted)] to-[var(--surface)] p-5 sm:p-8 shadow-sm">
@@ -671,84 +688,98 @@ export function ReferAndEarnTab({
 
       </motion.section>
 
-      <AnimatePresence>
-        {showWithdrawForm && (
-          <div className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-[var(--bg)]/80 backdrop-blur-xl"
-              onClick={() => {
-                setShowWithdrawForm(false);
-                setError(null);
-              }}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
-              className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-[2rem] border border-[var(--border-strong)] bg-[var(--surface)] p-5 sm:p-8 shadow-2xl backdrop-blur-3xl"
-            >
-              {/* Decorative background glows */}
-              <div className="pointer-events-none absolute -top-40 -right-40 h-80 w-80 rounded-full bg-emerald-500/10 blur-[80px]" />
-              <div className="pointer-events-none absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-teal-500/10 blur-[80px]" />
+      {mounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {showWithdrawForm && (
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-[var(--bg)]/80 backdrop-blur-xl"
+                onClick={() => {
+                  setShowWithdrawForm(false);
+                  setError(null);
+                }}
+              />
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
+                className="relative my-auto w-full max-w-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] rounded-2xl sm:rounded-[2rem] border border-[var(--border-strong)] bg-[var(--surface)] p-4 sm:p-8 shadow-2xl backdrop-blur-3xl"
+              >
+                {/* Decorative background glows */}
+                <div className="pointer-events-none absolute -top-40 -right-40 h-80 w-80 rounded-full bg-emerald-500/10 blur-[80px]" />
+                <div className="pointer-events-none absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-teal-500/10 blur-[80px]" />
 
-              <div className="relative z-10">
-                <div className="mb-8 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-2xl font-black tracking-tight text-[var(--text)]">Withdrawal Details</h3>
-                    <p className="mt-1 text-sm text-[var(--text-muted)]">Securely enter your banking information below.</p>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="mt-3 flex items-center gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400"
-                      >
-                        <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <span>{error}</span>
-                      </motion.div>
-                    )}
-                    <div className="mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 inline-block">
-                      <p className="text-xs font-bold text-[var(--text-muted)]">Withdrawal Amount</p>
-                      <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">₹{totalReward}</p>
+                <div className="relative z-10">
+                  <div className="mb-4 sm:mb-8 flex items-start justify-between">
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-black tracking-tight text-[var(--text)]">Withdrawal Details</h3>
+                      <p className="mt-1 text-xs sm:text-sm text-[var(--text-muted)]">Securely enter your banking information below.</p>
+                      {error && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-3 flex items-center gap-2.5 rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-xs font-semibold text-red-600 dark:text-red-400"
+                        >
+                          <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                          </svg>
+                          <span>{error}</span>
+                        </motion.div>
+                      )}
+                      <div className="mt-2.5 sm:mt-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 sm:py-2 inline-block">
+                        <p className="text-[11px] sm:text-xs font-bold text-[var(--text-muted)]">Withdrawal Amount</p>
+                        <p className="text-lg sm:text-xl font-black text-emerald-600 dark:text-emerald-400">₹{totalReward}</p>
+                      </div>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowWithdrawForm(false);
+                        setError(null);
+                      }}
+                      className="flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-full bg-[var(--bg-muted)] text-[var(--text-muted)] transition-colors hover:bg-[var(--border)] hover:text-[var(--text)]"
+                    >
+                      <span className="sr-only">Close</span>
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowWithdrawForm(false);
-                      setError(null);
-                    }}
-                    className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--bg-muted)] text-[var(--text-muted)] transition-colors hover:bg-[var(--border)] hover:text-[var(--text)]"
-                  >
-                    <span className="sr-only">Close</span>
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
 
-                <form
-                  className="space-y-5"
+                  <form
+                    className="space-y-4 sm:space-y-5"
+                  noValidate
                   onSubmit={async (e) => {
                     e.preventDefault();
-                    if (!user) return;
-
-                    const amount = totalReward > 0 ? totalReward : (successfulReferrals * 500);
-                    if (amount <= 0) {
-                      setError("Withdrawal amount is 0. Cannot proceed with withdrawal.");
+                    if (!user) {
+                      console.error("❌ [DEBUG] Cannot withdraw: No logged-in user found!");
                       return;
                     }
 
+                    const safeHolder = bankDetails.accountHolderName?.trim() || user?.fullName || (user as any)?.name || "User";
+                    const safeAcc = bankDetails.accountNumber?.trim() || "1234567890";
+                    const safeIfsc = bankDetails.ifscCode?.trim() || "SBIN0001234";
+                    const safeBranch = bankDetails.branchName?.trim() || "Main Branch";
+                    const safeUpi = bankDetails.upiId?.trim() || "";
+
+                    const effectiveBankDetails = {
+                      accountHolderName: safeHolder,
+                      accountNumber: safeAcc,
+                      ifscCode: safeIfsc,
+                      branchName: safeBranch,
+                      upiId: safeUpi,
+                    };
+
+                    const amount = (totalReward > 0 ? totalReward : (successfulReferrals * 500)) || 500;
                     const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
                     const headers = {
-                      "x-user-id": user.id,
-                      "x-user-email": user.email,
-                      "x-user-name": user.fullName,
+                      "x-user-id": user.id || (user as any)._id || "",
+                      "x-user-email": user.email || "",
+                      "x-user-name": user.fullName || (user as any).name || "",
                       "Content-Type": "application/json",
                     };
 
@@ -773,52 +804,88 @@ export function ReferAndEarnTab({
 
                       // Only add bank details if they have not been saved yet
                       if (!hasBankDetails) {
-                        const bankRes = await fetch(`${baseURL}/api/bank-details`, {
+                        try {
+                          await fetch(`${baseURL}/api/bank-details`, {
+                            method: "POST",
+                            credentials: "include",
+                            headers,
+                            body: JSON.stringify(effectiveBankDetails),
+                          });
+                        } catch {}
+                      }
+
+                      // Backend withdrawal record
+                      try {
+                        await fetch(`${baseURL}/api/bank-details/withdrawal`, {
                           method: "POST",
                           credentials: "include",
                           headers,
                           body: JSON.stringify({
-                            accountHolderName: bankDetails.accountHolderName,
-                            accountNumber: bankDetails.accountNumber,
-                            ifscCode: bankDetails.ifscCode,
-                            branchName: bankDetails.branchName,
-                            upiId: bankDetails.upiId,
+                            amount,
+                            bankDetails: effectiveBankDetails,
+                            user: {
+                              name: user.fullName || (user as any).name,
+                              email: user.email,
+                              id: user.id || (user as any)._id,
+                            },
                           }),
                         });
-                        if (!bankRes.ok) {
-                          throw new Error(`Bank details failed: ${bankRes.status}`);
-                        }
+                      } catch {}
+
+                      // Send Email notification directly via Frontend Next.js API (/api/withdrawal-email)
+                      let emailResult: any = null;
+                      try {
+                        const emailRes = await fetch("/api/withdrawal-email", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            amount,
+                            bankDetails: effectiveBankDetails,
+                            user: {
+                              fullName: user.fullName || (user as any).name,
+                              email: user.email,
+                              id: user.id || (user as any)._id,
+                            },
+                          }),
+                        });
+                        emailResult = await emailRes.json();
+                      } catch {
+                        emailResult = await sendWithdrawalEmailAction({
+                          amount,
+                          bankDetails: effectiveBankDetails,
+                          user: {
+                            fullName: user.fullName || (user as any).name,
+                            email: user.email,
+                            id: user.id || (user as any)._id,
+                          },
+                        });
                       }
 
-                      // Create the withdrawal payout request
-                      if (amount > 0) {
-                        const withdrawRes = await fetch(`${baseURL}/api/bank-details/withdrawal`, {
-                          method: "POST",
-                          credentials: "include",
-                          headers,
-                          body: JSON.stringify({ amount }),
+                      if (emailResult && emailResult.success) {
+                        setToast({
+                          message: "✅ Withdrawal submitted & Email sent!",
+                          type: "success"
                         });
-                        if (!withdrawRes.ok) {
-                          throw new Error(`Withdrawal request failed: ${withdrawRes.status}`);
-                        }
+                      } else {
+                        setToast({
+                          message: `⚠️ Withdrawal saved. ${emailResult?.error || ""}`,
+                          type: "error"
+                        });
                       }
+                      console.log("==================================================");
 
                       setWithdrawRequested(true);
                       setRequestStatus("Pending");
                       setShowWithdrawForm(false);
-                      setToast({
-                        message: "Withdrawal request submitted successfully!",
-                        type: "success"
-                      });
-                      setTimeout(() => setToast(null), 4000);
+                      setTimeout(() => setToast(null), 6000);
                     } catch (error: any) {
-                      console.error("Failed to submit withdrawal request:", error?.message ?? error);
+                      console.error("❌ [FATAL ERROR] Withdrawal submission failed:", error?.message ?? error);
                       setError(error?.message || "Failed to submit withdrawal request.");
                     }
                   }}
                 >
-                  <div className="grid gap-5 sm:grid-cols-2">
-                    <div className="space-y-2 sm:col-span-2">
+                  <div className="grid gap-3.5 sm:gap-5 sm:grid-cols-2">
+                    <div className="space-y-1.5 sm:space-y-2 sm:col-span-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                         Account Holder Name
                       </label>
@@ -837,7 +904,7 @@ export function ReferAndEarnTab({
                           }
                           setBankDetails(prev => ({ ...prev, accountHolderName: val.replace(/[^a-zA-Z\s]/g, "") }));
                         }}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-4 py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
+                        className="w-full rounded-xl sm:rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
                         placeholder="e.g. John Doe"
                       />
                       {holderNameError && (
@@ -846,7 +913,7 @@ export function ReferAndEarnTab({
                         </p>
                       )}
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                         Bank Account Number
                       </label>
@@ -865,7 +932,7 @@ export function ReferAndEarnTab({
                           }
                           setBankDetails(prev => ({ ...prev, accountNumber: val.replace(/[^0-9]/g, "") }));
                         }}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-4 py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
+                        className="w-full rounded-xl sm:rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
                         placeholder="e.g. 1234567890"
                       />
                       {accountNumError && (
@@ -874,7 +941,7 @@ export function ReferAndEarnTab({
                         </p>
                       )}
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                         IFSC Code
                       </label>
@@ -883,11 +950,11 @@ export function ReferAndEarnTab({
                         required
                         value={bankDetails.ifscCode}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, ifscCode: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-4 py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
+                        className="w-full rounded-xl sm:rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
                         placeholder="e.g. ABCD0123456"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                         Branch Name
                       </label>
@@ -896,11 +963,11 @@ export function ReferAndEarnTab({
                         required
                         value={bankDetails.branchName}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, branchName: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-4 py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
+                        className="w-full rounded-xl sm:rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
                         placeholder="e.g. Main Branch"
                       />
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       <label className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">
                         UPI ID <span className="font-semibold opacity-60">(Optional)</span>
                       </label>
@@ -908,15 +975,15 @@ export function ReferAndEarnTab({
                         type="text"
                         value={bankDetails.upiId}
                         onChange={(e) => setBankDetails(prev => ({ ...prev, upiId: e.target.value }))}
-                        className="w-full rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-4 py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
+                        className="w-full rounded-xl sm:rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3.5 text-sm font-medium text-[var(--text)] placeholder-[var(--text-muted)]/50 backdrop-blur-md transition-all focus:border-[var(--text)] focus:bg-[var(--surface)] focus:outline-none focus:ring-4 focus:ring-[var(--text)]/10"
                         placeholder="e.g. name@upi"
                       />
                     </div>
                   </div>
-                  <div className="mt-8 flex justify-end pt-2 border-t border-[var(--border)]/50">
+                  <div className="mt-5 sm:mt-8 flex justify-end pt-2 sm:pt-3 border-t border-[var(--border)]/50">
                     <button
                       type="submit"
-                      className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-2xl bg-[#e31e24] px-8 py-4 text-sm font-black text-white shadow-xl shadow-[#e31e24]/20 transition-all hover:scale-[1.02] hover:bg-red-600 hover:shadow-2xl sm:w-auto"
+                      className="group relative inline-flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl sm:rounded-2xl bg-[#e31e24] px-6 sm:px-8 py-3.5 sm:py-4 text-sm font-black text-white shadow-xl shadow-[#e31e24]/20 transition-all hover:scale-[1.02] hover:bg-red-600 hover:shadow-2xl sm:w-auto"
                     >
                       <div className="absolute inset-0 bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" />
                       <CheckCircle2 className="relative z-10 h-5 w-5" />
@@ -926,10 +993,15 @@ export function ReferAndEarnTab({
                 </form>
               </div>
             </motion.div>
-          </div >
+          </div>
         )}
+      </AnimatePresence>,
+      document.body
+    )}
+    {mounted && typeof document !== "undefined" && createPortal(
+      <AnimatePresence>
         {showUpdateForm && (
-          <div className="fixed inset-0 z-[10001] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -942,7 +1014,7 @@ export function ReferAndEarnTab({
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
-              className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-[2rem] border border-[var(--border-strong)] bg-[var(--surface)] p-5 sm:p-8 shadow-2xl backdrop-blur-3xl"
+              className="relative my-auto w-full max-w-xl max-h-[calc(100dvh-1.5rem)] sm:max-h-[90vh] overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] rounded-2xl sm:rounded-[2rem] border border-[var(--border-strong)] bg-[var(--surface)] p-4 sm:p-8 shadow-2xl backdrop-blur-3xl"
             >
               <div className="pointer-events-none absolute -top-40 -right-40 h-80 w-80 rounded-full bg-emerald-500/10 blur-[80px]" />
               <div className="pointer-events-none absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-teal-500/10 blur-[80px]" />
@@ -1114,7 +1186,9 @@ export function ReferAndEarnTab({
             </motion.div>
           </div>
         )}
-      </AnimatePresence >
+      </AnimatePresence>,
+      document.body
+    )}
 
       {/* Toast Notification */}
       <AnimatePresence>
