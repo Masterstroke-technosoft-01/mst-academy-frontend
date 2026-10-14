@@ -2120,22 +2120,35 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
               </button>
             </div>
 
-            <div className="mb-4 flex flex-col md:flex-row items-stretch justify-center gap-6 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] p-5 shrink-0 text-left">
-              <div className="flex flex-col items-center justify-between gap-2 text-center shrink-0 w-full md:max-w-[200px]">
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-xs font-bold text-[var(--text)]">Scan to Pay</p>
-                  <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white p-2 shadow-sm">
-                    <img
-                      src="/MasterstrokePaymentQRCode.jpg"
-                      alt="Payment QR Code"
-                      className="h-[140px] w-[140px] object-contain"
-                    />
+            <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] p-5 shrink-0 text-left">
+              <div className="flex flex-col md:flex-row items-stretch justify-center gap-6">
+                <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
+                      Bank Details
+                    </h4>
+                    <div className="space-y-2 text-xs">
+                      <div className="border-b border-[var(--border)] pb-1.5">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Account Name</span>
+                        <span className="font-bold text-[var(--text)] text-xs select-all">SMART ANGELOS FOUNDATION</span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 border-b border-[var(--border)] pb-1.5">
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Account Number</span>
+                          <span className="font-bold text-[var(--text)] text-xs font-mono select-all">100211590045</span>
+                        </div>
+                        <div>
+                          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">IFSC Code</span>
+                          <span className="font-bold text-[var(--text)] text-xs font-mono select-all">INDB0001375</span>
+                        </div>
+                      </div>
+                      <div className="pb-0.5">
+                        <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Bank & Branch</span>
+                        <span className="font-bold text-[var(--text)] text-xs select-all">MUKUNDNAGAR SWARGET PUNE BRANCH</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] leading-normal mt-1">
-                  Already paid? Fill in the transaction details below so we can verify it.
-                </p>
-              </div>
 
               {(() => {
                 const roleStr = (userProfile?.role || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
@@ -2156,8 +2169,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                 const discountPercent = apiDiscount !== null ? apiDiscount : 0;
                 const discountAmount = (base * discountPercent) / 100;
                 const discountedBase = base - discountAmount;
-                const gst = discountedBase * 0.18;
-                const total = discountedBase * 1.18;
+                const total = discountedBase;
 
                 return (
                   <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
@@ -2176,19 +2188,19 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                             <span className="font-bold">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         )}
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">18% GST:</span>
-                          <span className="font-bold text-[var(--text)]">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
                       </div>
                     </div>
                     <div className="flex justify-between items-baseline pt-3 mt-4 border-t border-[var(--border)]">
-                      <span className="font-black text-xs text-[var(--text)]">Total (Incl. GST):</span>
+                      <span className="font-black text-xs text-[var(--text)]">Total:</span>
                       <span className="font-black text-mst-red text-base whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                 );
               })()}
+              </div>
+              <p className="text-[11px] text-[var(--text-muted)] text-center mt-3 pt-2 border-t border-[var(--border)]">
+                Already paid? Fill in the transaction details below so we can verify it.
+              </p>
             </div>
 
             <form onSubmit={handleAllocationSubmit} className="space-y-3">
