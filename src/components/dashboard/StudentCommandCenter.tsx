@@ -2132,85 +2132,87 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
               </button>
             </div>
 
-            <div className="mb-4 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] p-5 shrink-0 text-left">
-              <div className="flex flex-col md:flex-row items-stretch justify-center gap-6">
-                <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
-                  <div>
-                    <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                      Bank Details
-                    </h4>
-                    <div className="space-y-2 text-xs">
-                      <div className="border-b border-[var(--border)] pb-1.5">
-                        <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Account Name</span>
-                        <span className="font-bold text-[var(--text)] text-xs select-all">SMART ANGELOS FOUNDATION</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 border-b border-[var(--border)] pb-1.5">
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Account Number</span>
-                          <span className="font-bold text-[var(--text)] text-xs font-mono select-all">100211590045</span>
-                        </div>
-                        <div>
-                          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">IFSC Code</span>
-                          <span className="font-bold text-[var(--text)] text-xs font-mono select-all">INDB0001375</span>
-                        </div>
-                      </div>
-                      <div className="pb-0.5">
-                        <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] block">Bank & Branch</span>
-                        <span className="font-bold text-[var(--text)] text-xs select-all">MUKUNDNAGAR SWARGET PUNE BRANCH</span>
-                      </div>
+            <div className="mb-4 shrink-0 text-left space-y-2">
+              {/* Bank Details & Amount combined in ONE box */}
+              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm space-y-4">
+                <div>
+                  <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
+                    Bank Details
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Account Name</span>
+                      <span className="font-bold text-[var(--text)] text-sm select-all break-words">SMART ANGELOS FOUNDATION</span>
+                    </div>
+                    <div>
+                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Account Number</span>
+                      <span className="font-bold text-[var(--text)] text-sm font-mono select-all">100211590045</span>
+                    </div>
+                    <div>
+                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">IFSC Code</span>
+                      <span className="font-bold text-[var(--text)] text-sm font-mono select-all">INDB0001375</span>
+                    </div>
+                    <div>
+                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Bank & Branch</span>
+                      <span className="font-bold text-[var(--text)] text-sm select-all break-words">MUKUNDNAGAR SWARGET PUNE BRANCH</span>
                     </div>
                   </div>
                 </div>
 
-              {(() => {
-                const roleStr = (liveRole || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
-                let pricing = null;
-                if (roleStr === "courseonly" || roleStr === "ojt") {
-                  pricing = { name: "OJT", base: 4999 };
-                } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
-                  pricing = { name: "Working Professional - Web3 Enthusiast", base: 24999 };
-                } else if (roleStr === "validator") {
-                  pricing = { name: "Validator", base: 9999 };
-                } else if (roleStr === "student") {
-                  pricing = { name: "Student", base: 19999 };
-                }
+                {/* Amount inside the same box */}
+                {(() => {
+                  const roleStr = (liveRole || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
+                  let pricing = null;
+                  if (roleStr === "courseonly" || roleStr === "ojt") {
+                    pricing = { name: "OJT", base: 4999 };
+                  } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
+                    pricing = { name: "Working Professional - Web3 Enthusiast", base: 24999 };
+                  } else if (roleStr === "validator") {
+                    pricing = { name: "Validator", base: 9999 };
+                  } else if (roleStr === "student") {
+                    pricing = { name: "Student", base: 19999 };
+                  }
 
-                if (!pricing) return null;
+                  if (!pricing) return null;
 
-                const base = pricing.base;
-                const discountPercent = userDiscount || 0;
-                const discountAmount = (base * discountPercent) / 100;
-                const discountedBase = base - discountAmount;
-                const total = discountedBase;
+                  const base = pricing.base;
+                  const discountPercent = userDiscount || 0;
+                  const discountAmount = (base * discountPercent) / 100;
+                  const discountedBase = base - discountAmount;
+                  const total = discountedBase;
 
-                return (
-                  <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                        Plan: {pricing.name}
-                      </h4>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">Role Amount:</span>
-                          <span className="font-bold text-[var(--text)]">₹{base.toLocaleString('en-IN')}</span>
+                  return (
+                    <div className="pt-3 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                        <div>
+                          <span className="text-xs uppercase font-bold text-[var(--text-muted)] block">Plan</span>
+                          <span className="font-bold text-mst-red text-sm uppercase">{pricing.name}</span>
+                        </div>
+                        <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+                        <div>
+                          <span className="text-xs uppercase font-bold text-[var(--text-muted)] block">Role Amount</span>
+                          <span className="font-bold text-[var(--text)] text-sm">₹{base.toLocaleString('en-IN')}</span>
                         </div>
                         {discountPercent > 0 && (
-                          <div className="flex justify-between border-b border-[var(--border)] pb-1.5 text-green-600">
-                            <span>Discount ({discountPercent}%):</span>
-                            <span className="font-bold">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
+                          <>
+                            <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+                            <div>
+                              <span className="text-xs uppercase font-bold text-green-600 block">Discount ({discountPercent}%)</span>
+                              <span className="font-bold text-green-600 text-sm">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                            </div>
+                          </>
                         )}
                       </div>
+                      <div className="flex items-center gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border)] w-full sm:w-auto justify-between sm:justify-end">
+                        <span className="text-sm font-black uppercase text-[var(--text-muted)]">Total:</span>
+                        <span className="text-lg font-black text-mst-red whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-baseline pt-3 mt-4 border-t border-[var(--border)]">
-                      <span className="font-black text-xs text-[var(--text)]">Total:</span>
-                      <span className="font-black text-mst-red text-base whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
-                  </div>
-                );
-              })()}
+                  );
+                })()}
               </div>
-              <p className="text-[11px] text-[var(--text-muted)] text-center mt-3 pt-2 border-t border-[var(--border)]">
+
+              <p className="text-[10px] text-[var(--text-muted)] text-center pt-1">
                 Already paid? Fill in the transaction details below so we can verify it.
               </p>
             </div>
