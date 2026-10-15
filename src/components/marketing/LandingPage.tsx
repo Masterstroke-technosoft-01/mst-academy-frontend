@@ -16,6 +16,16 @@ import { getSession } from "@/lib/auth";
 import { useCurrencyRate } from "@/hooks/useCurrencyRate";
 import { convertINRtoUSD } from "@/lib/currency";
 import BannerPopup from "@/components/marketing/BannerPopup";
+import { FaqSection } from "@/components/marketing/FaqSection";
+import { HOMEPAGE_FAQS } from "@/lib/faqs";
+
+const DEFAULT_LEADERBOARD_ENTRIES: LeaderboardEntry[] = [
+  { id: "s1", name: "Aarav K.", score: 92, modulesDone: 18, totalModules: 21, streak: 14, coins: 420 },
+  { id: "s2", name: "Diya S.", score: 88, modulesDone: 16, totalModules: 21, streak: 11, coins: 380 },
+  { id: "s3", name: "Rohan P.", score: 85, modulesDone: 15, totalModules: 21, streak: 9, coins: 310 },
+  { id: "s4", name: "Sara M.", score: 83, modulesDone: 14, totalModules: 21, streak: 8, coins: 290 },
+  { id: "s5", name: "Kabir T.", score: 80, modulesDone: 13, totalModules: 21, streak: 7, coins: 260 },
+];
 
 
 interface BackendLeaderboardEntry {
@@ -160,9 +170,9 @@ export function LandingPage({
   const [expandedPhaseDetails, setExpandedPhaseDetails] = useState<any>(null);
   const [isLoadingPhase, setIsLoadingPhase] = useState(false);
   const [courseDetails, setCourseDetails] = useState<any>(null);
-  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>(DEFAULT_LEADERBOARD_ENTRIES);
   const [fetchError, setFetchError] = useState(false);
-  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(true);
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
   const { rate: usdRate } = useCurrencyRate();
 
   useEffect(() => {
@@ -281,10 +291,10 @@ export function LandingPage({
               Masterstroke Academy
             </p> */}
 
-            <div className="mt-4 sm:mt-6 min-h-[110px] sm:min-h-[130px] flex flex-col justify-center">
-              <h1 className="animate-slide-up font-black text-[var(--text)] text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.1]">
+            <div className="mt-4 sm:mt-6 min-h-[130px] flex flex-col justify-center">
+              <h1 className="font-black text-[var(--text)] text-4xl sm:text-5xl lg:text-6xl tracking-tight leading-[1.1]">
                 Master Blockchain
-                <span className="block mt-1 sm:mt-2">
+                <span className="block mt-1 sm:mt-2 min-h-[1.2em]">
                   <Typewriter
                     strings={[
                       "From Zero to Production",
@@ -383,11 +393,11 @@ export function LandingPage({
 
               {/* Expandable Curriculum Cards */}
               <div
-                className={`grid transition-all duration-700 ease-in-out ${expandedPhase !== null ? "grid-rows-[1fr] opacity-100 mt-12" : "grid-rows-[0fr] opacity-0 mt-0"
+                className={`grid transition-all duration-700 ease-in-out ${expandedPhase !== null ? "grid-rows-[1fr] opacity-100 mt-8 sm:mt-12" : "grid-rows-[0fr] opacity-0 mt-0"
                   }`}
               >
-                <div className="overflow-hidden">
-                  <div className="mx-auto max-w-2xl pt-4">
+                <div className="overflow-hidden pb-4 pt-1">
+                  <div className="mx-auto max-w-2xl pt-2 sm:pt-4">
                     {expandedPhase !== null && (() => {
                       const phase: any = localPhases[expandedPhase];
                       const details = expandedPhaseDetails || phase;
@@ -397,7 +407,7 @@ export function LandingPage({
                       const hours = details.estimatedTime ?? PHASE_HOURS[phaseId]?.hours;
                       const moduleCount = details.realmodulecount ?? details.modules?.length ?? 0;
                       return (
-                        <div className="group relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-8 transition-all duration-500 hover:-translate-y-2 hover:border-mst-red/40 hover:shadow-2xl sm:p-10">
+                        <div className="group relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-6 sm:p-10 transition-all duration-500 hover:-translate-y-2 hover:border-mst-red/40 hover:shadow-2xl">
                           {isLoadingPhase && (
                             <div className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--surface)]/50 backdrop-blur-sm">
                               <div className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--border)] border-t-mst-red" />
@@ -432,11 +442,11 @@ export function LandingPage({
                                 {hours ? ` · ~${hours}` : ""}
                               </span>
                             </div>
-                            <h3 className="mt-3 text-2xl font-bold leading-snug text-[var(--text)]">
+                            {/* <h3 className="mt-3 text-2xl font-bold leading-snug text-[var(--text)]">
                               {details.title}
-                            </h3>
+                            </h3> */}
                             {details.description && (
-                              <p className="mt-4 text-base text-[var(--text-muted)]">
+                              <p className="mt-4 text-base font-bold text-black">
                                 {details.description}
                               </p>
                             )}
@@ -445,13 +455,13 @@ export function LandingPage({
                       );
                     })()}
                   </div>
-                  <div className="mt-10 text-center">
+                  <div className="mt-6 sm:mt-10 flex justify-center w-full px-2 py-2">
                     <Link
                       href="/academy-overview"
-                      className="group inline-flex items-center gap-2 rounded-full border-2 border-mst-red/40 bg-gradient-to-r from-mst-red/10 to-[var(--accent-purple)]/10 px-8 py-4 text-base font-bold text-mst-red transition hover:bg-mst-red hover:text-white"
+                      className="group inline-flex items-center justify-center gap-2 rounded-full border-2 border-mst-red/40 bg-gradient-to-r from-mst-red/10 to-[var(--accent-purple)]/10 px-4 py-3 sm:px-8 sm:py-4 text-xs min-[360px]:text-xs min-[400px]:text-sm sm:text-base font-bold text-mst-red transition hover:bg-mst-red hover:text-white shadow-md text-center max-w-full"
                     >
-                      View full curriculum with every submodule
-                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                      <span className="leading-snug">View full curriculum with every submodule</span>
+                      <ArrowRight className="h-5 w-5 sm:h-6 sm:w-6 shrink-0 transition-transform group-hover:translate-x-1" />
                     </Link>
                   </div>
                 </div>
@@ -531,6 +541,26 @@ export function LandingPage({
                 const originalPriceVal = plan.originalPrice || plan.discountedFrom || plan.original;
                 const original = (originalPriceVal && originalPriceVal !== plan.price) ? formatPrice(originalPriceVal) : "";
 
+                const rawBullets = Array.isArray(plan.perks) ? plan.perks : [];
+                const cleanedBullets = rawBullets
+                  .map((b: string) => {
+                    if (typeof b !== "string") return b;
+                    if (/fraction/i.test(b)) {
+                      return "1 Fraction Reward";
+                    }
+                    return b
+                      .replace(/\s*\+\s*Daily\s*\$MSTC\s*Rewards/gi, "")
+                      .replace(/\s*\+\s*Daily\s*\$MSTC/gi, "")
+                      .replace(/\s*\+\s*Daily\s*MSTC\s*Rewards/gi, "")
+                      .replace(/\s*\+\s*Daily\s*MSTC/gi, "")
+                      .replace(/Daily\s*\$MSTC\s*Rewards/gi, "")
+                      .replace(/Daily\s*\$MSTC/gi, "")
+                      .replace(/Daily\s*MSTC\s*Rewards/gi, "")
+                      .replace(/Daily\s*MSTC/gi, "")
+                      .trim();
+                  })
+                  .filter(Boolean);
+
                 return {
                   id: role.toLowerCase(),
                   detailHref,
@@ -539,7 +569,7 @@ export function LandingPage({
                   original,
                   gradient: "bg-gradient-to-br from-mst-red/20 via-mst-red/5 to-transparent",
                   tag,
-                  bullets: plan.perks || [],
+                  bullets: cleanedBullets,
                 };
               });
 
@@ -632,10 +662,10 @@ export function LandingPage({
               </div>
               <Link
                 href="/leaderboard"
-                className="inline-flex items-center gap-2 rounded-2xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-3 text-sm font-bold text-[var(--text)] transition hover:border-mst-red hover:bg-[var(--bg-muted)]"
+                className="inline-flex items-center justify-center gap-2 rounded-2xl border border-[var(--border-strong)] bg-[var(--surface)] px-5 py-3 text-sm font-bold text-[var(--text)] transition hover:border-mst-red hover:bg-[var(--bg-muted)] w-full sm:w-auto text-center"
               >
-                View full leaderboard
-                <ArrowRight className="h-4 w-4" />
+                <span>View full leaderboard</span>
+                <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
             </div>
 
@@ -710,21 +740,25 @@ export function LandingPage({
         <div className="relative mx-auto grid max-w-6xl grid-cols-2 sm:grid-cols-4">
           {[
             { end: 4, suffix: "", label: "Phases" },
-            { end: moduleCount, suffix: "", label: "Modules" },
-            { end: 123, submoduleCount, suffix: "", label: "Submodules" },
+            { end: moduleCount || 21, suffix: "", label: "Modules" },
+            { end: 123, suffix: "", label: "Submodules" },
             { end: 130, suffix: "+", label: "Hours" },
           ].map((stat, i) => (
             <div
               key={stat.label}
-              className={`border-[var(--border)] px-6 py-16 text-center sm:py-20 ${i > 0 ? "border-l" : ""
-                } ${statsRef.visible ? "animate-scale-in" : "opacity-0"}`}
+              className={`border-[var(--border)] px-6 py-16 text-center sm:py-20 ${
+                i > 0 ? "border-l" : ""
+              } ${statsRef.visible ? "animate-scale-in" : ""}`}
               style={{ animationDelay: `${i * 0.12}s` }}
             >
               <p className="text-4xl font-black text-gradient-red sm:text-6xl">
                 {statsRef.visible ? (
                   <AnimatedCounter end={stat.end} suffix={stat.suffix} />
                 ) : (
-                  "0"
+                  <span>
+                    {stat.end}
+                    {stat.suffix}
+                  </span>
                 )}
               </p>
               <p className="mt-3 text-sm font-bold uppercase tracking-widest text-[var(--text-muted)]">
@@ -794,7 +828,7 @@ export function LandingPage({
       </section>
 
       {/* Trust strip */}
-      <section className="py-20 sm:py-24">
+      <section className="pt-14 pb-4 sm:pt-16 sm:pb-6">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
           <RevealSection>
             <div className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-gradient-to-br from-[var(--surface)] via-[var(--bg-muted)] to-[var(--surface)] p-10 sm:p-14">
@@ -832,6 +866,15 @@ export function LandingPage({
         </div>
       </section>
 
+      {/* Frequently Asked Questions */}
+      <FaqSection
+        title="Frequently Asked Questions"
+        subtitle="Everything you need to know about Masterstroke Academy, our courses, certifications, and career paths."
+        tag="Got Questions?"
+        faqs={HOMEPAGE_FAQS}
+        id="faq"
+      />
+
       {/* CTA */}
       <section className="relative overflow-hidden border-t border-[var(--border)]">
         <MarketingHeroBackground />
@@ -863,7 +906,7 @@ export function LandingPage({
           </RevealSection>
         </div>
       </section>
-      <BannerPopup />
+      {/* <BannerPopup /> */}
     </div>
   );
 }

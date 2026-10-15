@@ -21,7 +21,7 @@ import type { Curriculum, ModuleMeta, SubmoduleMeta } from "@/lib/types";
 import type { ModuleStatus } from "@/lib/progress";
 import { useTheme } from "@/components/ThemeProvider";
 import { useRoadmapStore } from "@/components/learn/roadmap/roadmapStore";
-import { getCardSubmoduleTitle } from "@/lib/display-titles";
+import { getCardModuleTitle, getCardSubmoduleTitle } from "@/lib/display-titles";
 import { getModule, getSubmodule, registerSubmoduleMetadata, registerModuleIdMapping } from "@/lib/curriculum";
 import {
   getModuleProgressPercent,
@@ -39,6 +39,7 @@ import {
   Flame,
   Globe,
   Lock,
+  Play,
   Sparkles,
   Star,
   Trophy,
@@ -46,6 +47,7 @@ import {
   Monitor,
 } from "lucide-react";
 import { playExpand, playNavigate, playSelect } from "@/lib/sounds";
+import { ModuleVideoModal } from "./ModuleVideoModal";
 
 type PhaseNodeVisual = {
   phaseId: string;
@@ -66,6 +68,7 @@ type ModuleNodeVisual = {
   active: boolean;
   dimmed: boolean;
   onSelect: () => void;
+  onPlayVideo?: (module: ModuleMeta) => void;
 };
 
 type SubmoduleNodeVisual = {
@@ -106,7 +109,6 @@ const PhaseCardNode = memo(function PhaseCardNode({
       animate={{
         opacity: dimmed ? 0.35 : 1,
         scale: dimmed ? 0.93 : active ? 1.02 : 1,
-        filter: dimmed ? "blur(1.4px)" : "blur(0px)",
       }}
       transition={{ type: "spring", stiffness: 220, damping: 22 }}
       onClick={() => {
@@ -124,7 +126,7 @@ const PhaseCardNode = memo(function PhaseCardNode({
       <Handle type="source" position={Position.Left} id="left-source" className="opacity-0" />
       <Handle type="target" position={Position.Right} id="right-target" className="opacity-0" />
       <div
-        className={`group relative flex flex-col justify-between h-[180px] w-[min(100vw-3rem,420px)] max-w-[420px] sm:w-[360px] md:w-[420px] rounded-3xl border border-[var(--border)] bg-[var(--surface)]/70 backdrop-blur-md p-5 sm:p-6 shadow-lg`}
+        className={`group relative flex flex-col justify-between min-h-[160px] sm:min-h-[180px] w-[min(calc(100vw-2.5rem),420px)] max-w-[420px] sm:w-[360px] md:w-[420px] rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--surface)]/70 backdrop-blur-md p-4 sm:p-6 shadow-lg`}
         style={{
           boxShadow: active
             ? `0 18px 60px ${color}33`
@@ -135,29 +137,29 @@ const PhaseCardNode = memo(function PhaseCardNode({
         }}
       >
         <div
-          className={`absolute inset-0 -z-10 rounded-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 ${active ? "opacity-100" : ""
+          className={`absolute inset-0 -z-10 rounded-2xl sm:rounded-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 ${active ? "opacity-100" : ""
             }`}
           style={{
             background: `linear-gradient(135deg, ${color}33, transparent 55%), radial-gradient(ellipse at 30% 30%, ${color}22, transparent 60%)`,
           }}
         />
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <span
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl"
+                className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl mt-0.5"
                 style={{
                   background: `linear-gradient(135deg, ${color}26, transparent 60%)`,
                   border: `1px solid ${tint(color, "50")}`,
                 }}
               >
-                <Icon className="h-5 w-5" style={{ color }} />
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color }} />
               </span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
                   Phase {data.phaseId.split("-")[1]} • {phaseStyle?.label ?? "Phase"}
                 </p>
-                <h3 className="text-lg font-extrabold text-[var(--text)] line-clamp-2">{title}</h3>
+                <h3 className="mt-0.5 text-sm sm:text-lg font-extrabold text-[var(--text)] line-clamp-2 leading-snug">{title}</h3>
               </div>
             </div>
 
@@ -196,9 +198,10 @@ const PhaseCardNode = memo(function PhaseCardNode({
 });
 
 const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNodeVisual }) {
-  const { module, status, progress, locked, active, dimmed, color } = data;
-  const title = module.title;
+  const { module, status, progress, locked, active, dimmed, color, onPlayVideo } = data;
+  const title = getCardModuleTitle(module.title);
   const subCount = module.submodules.length;
+  const hasVideo = Boolean(module.videoUrl) && !locked;
 
   const badge =
     status === "completed"
@@ -215,7 +218,6 @@ const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNode
       animate={{
         opacity: dimmed ? 0.35 : 1,
         scale: active ? 1.03 : 1,
-        filter: dimmed ? "blur(1.2px)" : "blur(0px)",
       }}
       transition={{ type: "spring", stiffness: 220, damping: 20 }}
       className="relative"
@@ -232,7 +234,7 @@ const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNode
       <Handle type="target" position={Position.Left} id="left-target" className="opacity-0" />
       <Handle type="source" position={Position.Right} id="right-source" className="opacity-0" />
       <div
-        className={`w-[min(100vw-3rem,480px)] max-w-[480px] min-h-[175px] flex flex-col justify-between rounded-3xl border bg-[var(--surface)]/80 backdrop-blur-md p-6 shadow-md transition-all duration-300 ${active
+        className={`w-[min(calc(100vw-2.5rem),480px)] max-w-[480px] min-h-[160px] sm:min-h-[175px] flex flex-col justify-between rounded-2xl sm:rounded-3xl border bg-[var(--surface)]/80 backdrop-blur-md p-4 sm:p-6 shadow-md transition-all duration-300 ${active
           ? "border-[var(--border-strong)]"
           : locked
             ? "border-[var(--border)] opacity-80"
@@ -244,26 +246,26 @@ const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNode
         }}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-start gap-2.5 sm:gap-3 flex-1">
             <span
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl mt-0.5"
+              className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl mt-0.5"
               style={{
                 background: `linear-gradient(135deg, ${color}22, transparent 60%)`,
                 border: `1px solid ${tint(color, "55")}`,
               }}
             >
-              <BookOpen className="h-5 w-5" style={{ color }} />
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" style={{ color }} />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
                 Module {module.index}
               </p>
-              <h4 className="mt-1 line-clamp-2 text-lg font-extrabold text-[var(--text)]">
+              <h4 className="mt-0.5 line-clamp-2 text-sm sm:text-lg font-extrabold text-[var(--text)] leading-snug">
                 {title}
               </h4>
             </div>
           </div>
-          <div className="shrink-0 mt-0.5">
+          <div className="shrink-0 mt-0.5 flex flex-col items-end gap-2">
             {status === "locked" ? (
               <Lock className="h-4 w-4 text-[var(--text-muted)]/70" />
             ) : (
@@ -273,6 +275,19 @@ const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNode
               >
                 {badge}
               </span>
+            )}
+            {hasVideo && (
+              <button
+                type="button"
+                aria-label={`Play video for Module ${module.index ?? module.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onPlayVideo?.(module);
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-black text-white shadow-lg transition-transform hover:scale-110"
+              >
+                <Play size={13} className="ml-0.5 fill-white" />
+              </button>
             )}
           </div>
         </div>
@@ -324,7 +339,6 @@ const SubmoduleChipNode = memo(function SubmoduleChipNode({
       animate={{
         opacity: dimmed ? 0.35 : 1,
         scale: active ? 1.05 : 1,
-        filter: dimmed ? "blur(1px)" : "blur(0px)",
       }}
       transition={{ type: "spring", stiffness: 240, damping: 22 }}
       onClick={() => {
@@ -340,7 +354,7 @@ const SubmoduleChipNode = memo(function SubmoduleChipNode({
       <Handle type="target" position={Position.Left} id="left-target" className="opacity-0" />
       <Handle type="source" position={Position.Right} id="right-source" className="opacity-0" />
       <div
-        className={`w-[min(100vw-3rem,400px)] max-w-[400px] rounded-2xl border bg-[var(--surface)]/80 backdrop-blur-md p-5 shadow-sm transition-all duration-300 ${active
+        className={`w-[min(calc(100vw-2.5rem),400px)] max-w-[400px] rounded-2xl border bg-[var(--surface)]/80 backdrop-blur-md p-3.5 sm:p-5 shadow-sm transition-all duration-300 ${active
           ? "border-[var(--border-strong)] shadow-xl"
           : locked
             ? "opacity-70"
@@ -352,11 +366,11 @@ const SubmoduleChipNode = memo(function SubmoduleChipNode({
         }}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
               {module.index || 1}.{index + 1}
             </p>
-            <p className="mt-1 line-clamp-2 text-base font-bold text-[var(--text)]">{title}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs sm:text-base font-bold text-[var(--text)] leading-snug">{title}</p>
           </div>
           <div className="shrink-0">
             {locked ? (
@@ -398,9 +412,9 @@ function CameraController({ targetNodeIds }: { targetNodeIds: string[] }) {
         rf.fitView({
           nodes: targetNodeIds.map((id) => ({ id })) as any,
           padding: 0.12,
-          duration: 750,
+          duration: 600,
           minZoom: 0.85,
-          maxZoom: 1.1,
+          maxZoom: 1.0,
         });
       } catch {
         // ignore
@@ -450,46 +464,67 @@ function Breadcrumb({
   onBackModule: () => void;
   onResetAll: () => void;
 }) {
+  const formattedModuleTitle = moduleTitle ? getCardModuleTitle(moduleTitle) : undefined;
+  const formattedSubTitle = subTitle ? getCardSubmoduleTitle(subTitle) : undefined;
+
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/85 backdrop-blur-md px-4 py-3 shadow-sm">
-      <button
-        type="button"
-        onClick={onResetAll}
-        className="text-xs font-bold text-mst-red hover:underline"
-      >
-        Home
-      </button>
-      {phaseTitle && (
-        <>
-          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-          <button
-            type="button"
-            onClick={onBackPhase}
-            className="text-xs font-bold text-[var(--text-muted)] hover:text-mst-red hover:underline"
-          >
-            {phaseTitle}
-          </button>
-        </>
-      )}
-      {moduleTitle && (
-        <>
-          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-          <button
-            type="button"
-            onClick={onBackModule}
-            className="text-xs font-bold text-[var(--text-muted)] hover:text-mst-red hover:underline"
-          >
-            {moduleTitle}
-          </button>
-        </>
-      )}
-      {subTitle && (
-        <>
-          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-          <span className="text-xs font-bold text-[var(--text)]">{subTitle}</span>
-        </>
-      )}
-    </div>
+    <nav
+      aria-label="Breadcrumb"
+      className="w-full max-w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-md p-3 sm:px-4 sm:py-3 shadow-sm"
+    >
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs font-semibold leading-relaxed">
+        <button
+          type="button"
+          onClick={onResetAll}
+          className="inline-flex items-center text-mst-red hover:underline transition-colors shrink-0 font-bold cursor-pointer"
+        >
+          Home
+        </button>
+
+        {phaseTitle && (
+          <div className="inline-flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+            <button
+              type="button"
+              onClick={onBackPhase}
+              className={`transition-colors hover:text-mst-red hover:underline text-left cursor-pointer ${
+                moduleTitle || subTitle
+                  ? "text-[var(--text-muted)] font-medium"
+                  : "text-[var(--text)] font-bold"
+              }`}
+            >
+              {phaseTitle}
+            </button>
+          </div>
+        )}
+
+        {formattedModuleTitle && (
+          <div className="inline-flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+            <button
+              type="button"
+              onClick={onBackModule}
+              className={`transition-colors hover:text-mst-red hover:underline text-left cursor-pointer ${
+                subTitle
+                  ? "text-[var(--text-muted)] font-medium"
+                  : "text-[var(--text)] font-bold"
+              }`}
+            >
+              {formattedModuleTitle}
+            </button>
+          </div>
+        )}
+
+        {formattedSubTitle && (
+          <div className="inline-flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+            <span className="text-[var(--text)] font-bold text-left">
+              {formattedSubTitle}
+            </span>
+          </div>
+        )}
+      </div>
+    </nav>
   );
 }
 
@@ -528,6 +563,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
 
   const [mounted, setMounted] = useState(false);
   const [showMobileWarningPopup, setShowMobileWarningPopup] = useState(false);
+  const [playingModule, setPlayingModule] = useState<ModuleMeta | null>(null);
 
   const {
     activePhaseId,
@@ -739,6 +775,16 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
     });
   };
 
+  const handleAllocationFieldChange = (field: keyof typeof allocationForm, value: string) => {
+    setAllocationForm((prev) => ({ ...prev, [field]: value }));
+    setAllocationErrors((prev) => {
+      if (!prev[field]) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
   const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -747,6 +793,12 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         e.target.value = "";
         return;
       }
+      setAllocationErrors((prev) => {
+        if (!prev.paymentScreenshotUrl) return prev;
+        const newErrors = { ...prev };
+        delete newErrors.paymentScreenshotUrl;
+        return newErrors;
+      });
       const reader = new FileReader();
       reader.onloadend = async () => {
         const rawBase64 = reader.result as string;
@@ -863,7 +915,8 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
   const [fetchedSubmodules, setFetchedSubmodules] = useState<Record<string, any[]>>({});
   const isFetchingSubmodules = !!activeModuleId && !fetchedSubmodules[String(activeModuleId)];
   const isUserAdmin = userProfile?.role?.toLowerCase() === "admin";
-  const needsVerification = !isUserAdmin && !!userProfile && !isPaymentVerified;
+  const showTopVerificationBanner = !isUserAdmin && !!userProfile && !isPaymentVerified;
+  const needsVerification = false; // !isUserAdmin && !!userProfile && !isPaymentVerified;
 
   // Fetch course phases & single phases on mount
   useEffect(() => {
@@ -928,10 +981,11 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
 
     async function loadSubmodules() {
       try {
+        // Standard API for paid/verified users (loads all submodules)
         const res = await fetchWithAuth(`${baseURL}/api/submodules/module/${activeModuleId}`);
         if (res.ok) {
           const json = await res.json();
-          if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          if (json.success && Array.isArray(json.data)) {
             const sorted = [...json.data].sort((a, b) => (a.index || 0) - (b.index || 0));
             setFetchedSubmodules((prev) => ({
               ...prev,
@@ -940,9 +994,32 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
             return;
           }
         }
+
+        // If unpaid / payment verification pending, load trial submodule
+        const trialSubmoduleId = "6a362637e3e011264a0a9739";
+        const trialRes = await fetchWithAuth(`${baseURL}/api/submodules/trial/${trialSubmoduleId}`);
+        if (trialRes.ok) {
+          const trialJson = await trialRes.json();
+          if (trialJson.success && trialJson.data) {
+            const trialSub = trialJson.data;
+            if (String(trialSub.moduleId) === String(activeModuleId) || !trialSub.moduleId) {
+              setFetchedSubmodules((prev) => ({
+                ...prev,
+                [String(activeModuleId)]: [trialSub],
+              }));
+              return;
+            }
+          }
+        }
       } catch (err) {
-        console.error("Error fetching submodules by module:", err);
+        console.error("Error fetching submodules:", err);
       }
+      
+      // Fallback: if we didn't return early (error or invalid data), set to empty array to stop loading
+      setFetchedSubmodules((prev) => ({
+        ...prev,
+        [String(activeModuleId)]: [],
+      }));
     }
     loadSubmodules();
   }, [baseURL, activeModuleId]);
@@ -1004,6 +1081,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         description: m.description || "",
         submodules,
         index: m.index,
+        videoUrl: m.videoUrl || staticMod?.videoUrl || undefined,
       };
     });
 
@@ -1062,6 +1140,19 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
     return activeModule.submodules.find((s) => String(s.slug) === String(activeSubmoduleSlug));
   }, [activeModule, activeSubmoduleSlug]);
 
+  useEffect(() => {
+    const isPanelOpen = Boolean(activeModule && activeSubmodule);
+    if (isPanelOpen) {
+      document.body.classList.add("submodule-panel-open");
+    } else {
+      document.body.classList.remove("submodule-panel-open");
+    }
+
+    return () => {
+      document.body.classList.remove("submodule-panel-open");
+    };
+  }, [activeModule, activeSubmodule]);
+
   const nodesAndEdges = useMemo(() => {
     const nodes: Node[] = [];
     const edges: Edge[] = [];
@@ -1083,9 +1174,10 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
       const color = style?.color ?? "#e31e24";
       const mod = activeModule;
       const slugs = mod.submodules.map((s) => s.slug);
-      const status = getModuleStatus(mod.id, allModuleIds, slugs, getSlugs);
+      const rawStatus = getModuleStatus(mod.id, allModuleIds, slugs, getSlugs);
       const progress = getModuleProgressPercent(mod.id, slugs);
-      const moduleLocked = status === "locked";
+      const status = isPaymentVerified && rawStatus === "locked" ? "active" : rawStatus;
+      const moduleLocked = isPaymentVerified ? false : (status === "locked");
       const centerX = isMobile ? 20 : 80;
 
       nodes.push({
@@ -1102,20 +1194,28 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
           active: true,
           dimmed: false,
           onSelect: () => { },
+          onPlayVideo: setPlayingModule,
         } satisfies ModuleNodeVisual,
         draggable: false,
       });
 
       let lastUnlockedIndex = -1;
       mod.submodules.forEach((sub, i) => {
-        const locked = isSubmoduleLocked(moduleLocked, i, mod.id, mod.submodules);
+        const locked = isPaymentVerified ? false : isSubmoduleLocked(moduleLocked, i, mod.id, mod.submodules);
         if (!locked) {
           lastUnlockedIndex = i;
         }
       });
 
-      mod.submodules.forEach((sub, i) => {
-        const locked = isSubmoduleLocked(moduleLocked, i, mod.id, mod.submodules);
+      // Progressive unlock: Show all unlocked submodules + 1 upcoming locked submodule
+      const maxVisibleIndex = Math.min(
+        mod.submodules.length - 1,
+        lastUnlockedIndex >= 0 ? lastUnlockedIndex + 1 : 0
+      );
+      const visibleSubmodules = mod.submodules.slice(0, maxVisibleIndex + 1);
+
+      visibleSubmodules.forEach((sub, i) => {
+        const locked = isPaymentVerified ? false : isSubmoduleLocked(moduleLocked, i, mod.id, mod.submodules);
         const active = activeSubmoduleSlug === sub.slug;
         const dimmed = activeSubmoduleSlug != null && activeSubmoduleSlug !== sub.slug;
         const progressPct = computeProgressPctForSubmodule(mod.id, sub.slug);
@@ -1124,7 +1224,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         nodes.push({
           id: subId,
           type: "subChip",
-          position: { x: centerX + (isMobile ? 0 : 20), y: 170 + i * subGapY },
+          position: { x: centerX + (isMobile ? 0 : 20), y: 190 + i * subGapY },
           data: {
             module: mod,
             sub,
@@ -1134,9 +1234,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
             active,
             dimmed,
             onSelect: () => {
-              if (viewportW <= 1024) {
-                setShowMobileWarningPopup(true);
-              } else if (!locked) {
+              if (!locked) {
                 setSubmodule(sub.slug);
               }
             },
@@ -1144,8 +1242,6 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
           } satisfies SubmoduleNodeVisual,
           draggable: false,
         });
-
-        // Edges removed per user request for a simpler look without connecting lines
       });
 
       return { nodes, edges };
@@ -1161,9 +1257,10 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
 
       modules.forEach((mod, i) => {
         const slugs = mod.submodules.map((s) => s.slug);
-        const status = getModuleStatus(mod.id, allModuleIds, slugs, getSlugs);
+        const rawStatus = getModuleStatus(mod.id, allModuleIds, slugs, getSlugs);
         const progress = getModuleProgressPercent(mod.id, slugs);
-        const locked = status === "locked";
+        const status = isPaymentVerified && rawStatus === "locked" ? "active" : rawStatus;
+        const locked = isPaymentVerified ? false : (status === "locked");
 
         const row = Math.floor(i / 2);
         const col = isMobile ? 0 : i % 2;
@@ -1183,12 +1280,11 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
             active: false,
             dimmed: false,
             onSelect: () => {
-              if (viewportW <= 1024) {
-                setShowMobileWarningPopup(true);
-              } else if (!locked) {
+              if (!locked) {
                 setModule(mod.id);
               }
             },
+            onPlayVideo: setPlayingModule,
           } satisfies ModuleNodeVisual,
           draggable: false,
         });
@@ -1289,30 +1385,50 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
     setModule,
     setSubmodule,
     activeModule,
+    isPaymentVerified,
+    setPlayingModule
   ]);
 
   const { nodes, edges } = nodesAndEdges;
 
+  const translateExtent = useMemo(() => {
+    if (!nodes.length) return undefined;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach((n) => {
+      minX = Math.min(minX, n.position.x);
+      minY = Math.min(minY, n.position.y);
+      maxX = Math.max(maxX, n.position.x + (isMobile ? 320 : 380));
+      maxY = Math.max(maxY, n.position.y + (isMobile ? 240 : 280));
+    });
+    const padX = isMobile ? 180 : 320;
+    const padY = isMobile ? 180 : 320;
+    return [
+      [minX - padX, minY - padY],
+      [maxX + padX, maxY + padY],
+    ] as [[number, number], [number, number]];
+  }, [nodes, isMobile]);
+
   const graphHeight = useMemo(() => {
     if (activeModuleId && activeModule) {
-      return Math.max(480, 220 + activeModule.submodules.length * (isMobile ? 150 : 160));
+      const subCount = nodes.filter((n) => n.type === "subChip").length;
+      return Math.max(480, 220 + subCount * (isMobile ? 150 : 160));
     }
     if (activePhaseId) {
       const count = modulesInActivePhase.length;
       if (activePhaseId === "phase-3") {
         const rows = isMobile ? count : Math.ceil(count / 2);
-        return Math.max(640, rows * 170 + 80);
+        return Math.max(640, rows * (isMobile ? 200 : 180) + 80);
       }
-      return isMobile ? 520 : 640;
+      return isMobile ? Math.max(520, count * 220 + 80) : 640;
     }
-    return isMobile ? 520 : 640;
-  }, [activeModuleId, activeModule, activePhaseId, modulesInActivePhase.length, isMobile]);
+    return isMobile ? 880 : 640;
+  }, [activeModuleId, activeModule, activePhaseId, modulesInActivePhase.length, isMobile, nodes]);
 
   const targetFitIds = useMemo(() => {
     if (activeModuleId && activeModule) {
       return [
         `module-${activeModuleId}`,
-        ...activeModule.submodules.map((sub) => `sub-${activeModuleId}-${sub.slug}`)
+        ...nodes.filter((n) => n.type === "subChip").map((n) => n.id),
       ];
     }
     if (activePhaseId) {
@@ -1322,7 +1438,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
       return moduleIds;
     }
     return curriculum.phases.map((p) => `phase-${p.id}`);
-  }, [activeSubmoduleSlug, activeModuleId, activePhaseId, curriculum.phases, curriculum.modules, activeModule]);
+  }, [activeSubmoduleSlug, activeModuleId, activePhaseId, curriculum.phases, curriculum.modules, activeModule, nodes]);
 
   const nodeTypes = useMemo(
     () => ({
@@ -1343,27 +1459,29 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
       : -1;
 
   const activeModuleStatus = activeModule
-    ? getModuleStatus(
-      activeModule.id,
-      curriculum.modules.map((m) => m.id),
-      activeModule.submodules.map((s) => s.slug),
-      (id) => curriculum.modules.find((mm) => String(mm.id) === String(id))?.submodules.map((s) => s.slug) ?? []
-    )
+    ? (isPaymentVerified
+      ? "active"
+      : getModuleStatus(
+        activeModule.id,
+        curriculum.modules.map((m) => m.id),
+        activeModule.submodules.map((s) => s.slug),
+        (id) => curriculum.modules.find((mm) => String(mm.id) === String(id))?.submodules.map((s) => s.slug) ?? []
+      ))
     : null;
 
-  const moduleLocked = activeModuleStatus === "locked";
+  const moduleLocked = isPaymentVerified ? false : (activeModuleStatus === "locked");
 
   const lastUnlockedIndex = useMemo(() => {
     if (!activeModule) return -1;
     let lastIdx = -1;
     activeModule.submodules.forEach((sub, i) => {
-      const locked = isSubmoduleLocked(moduleLocked, i, activeModule.id, activeModule.submodules);
+      const locked = isPaymentVerified ? false : isSubmoduleLocked(moduleLocked, i, activeModule.id, activeModule.submodules);
       if (!locked) {
         lastIdx = i;
       }
     });
     return lastIdx;
-  }, [activeModule, moduleLocked]);
+  }, [activeModule, moduleLocked, isPaymentVerified]);
 
   const subProgressPct =
     activeModule && activeSubmodule
@@ -1377,12 +1495,14 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
 
   const subLocked =
     activeModule && activeSubmodule
-      ? isSubmoduleLocked(
-        moduleLocked,
-        activeModule.submodules.findIndex((s) => s.slug === activeSubmodule.slug),
-        activeModule.id,
-        activeModule.submodules
-      )
+      ? (isPaymentVerified
+        ? false
+        : isSubmoduleLocked(
+          moduleLocked,
+          activeModule.submodules.findIndex((s) => s.slug === activeSubmodule.slug),
+          activeModule.id,
+          activeModule.submodules
+        ))
       : false;
 
   const detailCta = useMemo(() => {
@@ -1447,6 +1567,12 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
       className="relative min-h-[calc(100vh-4rem)] bg-[var(--bg)] overflow-hidden"
       onMouseMove={handleMouseMove}
     >
+      <ModuleVideoModal
+        open={Boolean(playingModule)}
+        onClose={() => setPlayingModule(null)}
+        videoUrl={playingModule?.videoUrl || ""}
+        title={playingModule ? `Module ${playingModule.index ?? playingModule.id}: ${playingModule.title}` : ""}
+      />
       {/* cinematic background */}
       <div
         className="pointer-events-none absolute inset-0 bg-grid opacity-60"
@@ -1556,7 +1682,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         </div>
       </div>
 
-      {needsVerification && (
+      {showTopVerificationBanner && (
         <div className="relative z-10 mx-auto mt-4 max-w-7xl px-4 sm:px-6">
           {!isPaymentVerified ? (
             (!userProfile.transactionId || !userProfile.transactionId.trim()) && !hasSubmittedPayment ? (
@@ -1564,7 +1690,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                 <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: '#e31e24' }} />
                 <div className="flex-1">
                   <p className="font-bold text-sm" style={{ color: '#e31e24' }}>Payment Pending</p>
-                  <p className="mt-1 leading-relaxed" style={{ color: '#e31e24' }}>Please complete your payment first to access the curriculum. Once paid, ensure your Transaction ID is updated in your profile settings.</p>
+                  <p className="mt-1 leading-relaxed" style={{ color: '#e31e24' }}>Complete your payment to unlock the full curriculum.</p>
                   <button
                     type="button"
                     onClick={openPaymentModal}
@@ -1576,10 +1702,10 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
               </div>
             ) : (
               <div className="flex items-start gap-3.5 rounded-2xl border p-4 text-xs font-semibold backdrop-blur-md" style={{ backgroundColor: '#fff5f5', borderColor: '#f5c6cb' }}>
-                <Clock className="h-5 w-5 shrink-0 mt-0.5" style={{ color: '#e31e24' }} />
+                <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" style={{ color: '#e31e24' }} />
                 <div>
                   <p className="font-bold text-sm" style={{ color: '#e31e24' }}>Payment Verification Pending</p>
-                  <p className="mt-1 leading-relaxed" style={{ color: '#e31e24' }}>Please wait some time. Once admin payment verification is complete, your curriculum will be unlocked.</p>
+                  <p className="mt-1 leading-relaxed" style={{ color: '#e31e24' }}>We&apos;re verifying your payment in between working hours. Your curriculum will unlock once it&apos;s approved. Please ignore if already paid.</p>
                 </div>
               </div>
             )
@@ -1609,15 +1735,8 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         </div>
       )}
 
-      {/* Interactive Content (Blurred on mobile when warning popup is active) */}
-      <div
-        className="assignment-content"
-        style={{
-          filter: showMobileWarningPopup ? "blur(8px)" : "none",
-          transition: "filter 0.3s ease",
-          pointerEvents: showMobileWarningPopup ? "none" : "auto",
-        }}
-      >
+      {/* Interactive Content */}
+      <div className="assignment-content">
         {/* Graph - viewport height so less scrolling */}
         <div className="relative z-10 mx-auto mt-4 max-w-7xl px-4 pb-8 sm:px-6">
           <div
@@ -1639,7 +1758,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   "radial-gradient(ellipse 80% 60% at 50% 0%, rgba(168,85,247,0.12), transparent 70%)",
               }}
             />
-            <div style={{ height: graphHeight, width: "100%" }}>
+            <div className="h-full w-full">
               {needsVerification ? (
                 <div className="flex h-full items-start justify-center bg-[var(--surface)]/10 backdrop-blur-sm p-6 pt-20">
                   <div className="max-w-md w-full shadow-lg rounded-2xl">
@@ -1712,11 +1831,12 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   zoomOnPinch={false}
                   zoomOnDoubleClick={false}
                   preventScrolling={false}
-                  fitView={false}
+                  fitView={true}
+                  fitViewOptions={{ padding: 0.12 }}
                   proOptions={{ hideAttribution: true }}
-                  minZoom={isMobile ? 0.5 : 0.25}
-                  maxZoom={1.4}
-                  defaultViewport={{ x: isMobile ? 8 : 40, y: 20, zoom: isMobile ? 0.85 : 0.95 }}
+                  minZoom={0.25}
+                  maxZoom={1.5}
+                  translateExtent={translateExtent}
                 >
                   <Background
                     color={isLight ? "#d1d5db" : "#1f2937"}
@@ -1724,10 +1844,10 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                     variant={BackgroundVariant.Dots}
                   />
                   <Controls
+                    position="top-left"
                     className="!bg-white/70 !border-black/10 dark:!bg-[#111] !shadow-lg"
                     showInteractive={false}
                   />
-
 
                   <CameraController targetNodeIds={targetFitIds} />
                 </ReactFlow>
@@ -1981,39 +2101,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         </AnimatePresence>
       </div>
 
-      {/* Mobile Warning Popup Modal */}
-      <AnimatePresence>
-        {showMobileWarningPopup && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/45 backdrop-blur-[2px]">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 15 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 15 }}
-              transition={{ type: "spring", stiffness: 300, damping: 25 }}
-              className="relative w-full max-w-sm overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/90 p-8 shadow-2xl backdrop-blur-md text-center"
-            >
-              <div className="flex flex-col items-center">
-                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-mst-red/10 border border-mst-red/20 mb-6 animate-pulse">
-                  <Monitor className="h-8 w-8 text-mst-red" />
-                </div>
-                <h3 className="text-lg font-black text-[var(--text)]">
-                  Desktop Only Feature
-                </h3>
-                <p className="mt-3 text-xs leading-relaxed text-[var(--text-muted)]">
-                  The Interactive Learning Tree features and lesson workspaces are optimized for larger displays. Please open this page on a desktop computer to continue.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setShowMobileWarningPopup(false)}
-                  className="mt-6 w-full rounded-2xl bg-gradient-to-r from-mst-red to-red-600 px-4 py-3 text-xs font-bold text-white shadow-lg shadow-mst-red/20 hover:brightness-110 active:scale-[0.98] transition-all"
-                >
-                  Got it
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
 
       {isAllocationModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
@@ -2112,7 +2200,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.accountHolderName}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, accountHolderName: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('accountHolderName', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.accountHolderName ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Enter account holder name"
                   />
@@ -2127,8 +2215,8 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   </label>
                   <select
                     value={allocationForm.category}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, category: e.target.value })}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]"
+                    onChange={(e) => handleAllocationFieldChange('category', e.target.value)}
+                    className={`w-full rounded-lg border ${allocationErrors.category ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]`}
                   >
                     <option value="">Select Category</option>
                     <option value="STUDENT">STUDENT</option>
@@ -2150,7 +2238,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="number"
                     value={allocationForm.amountPaid}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, amountPaid: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('amountPaid', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.amountPaid ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="2999"
                   />
@@ -2166,7 +2254,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="date"
                     value={allocationForm.paymentDate}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentDate: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('paymentDate', e.target.value)}
                     max={(() => {
                       const d = new Date();
                       const year = d.getFullYear();
@@ -2174,7 +2262,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                       const day = String(d.getDate()).padStart(2, '0');
                       return `${year}-${month}-${day}`;
                     })()}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
+                    className={`w-full rounded-lg border ${allocationErrors.paymentDate ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   />
                   {allocationErrors.paymentDate && (
                     <p className="mt-0.5 text-[10px] text-red-500">{allocationErrors.paymentDate}</p>
@@ -2190,7 +2278,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.transactionId}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, transactionId: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('transactionId', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.transactionId ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="UTR123456789"
                   />
@@ -2205,8 +2293,8 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   </label>
                   <select
                     value={allocationForm.paymentMethod}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentMethod: e.target.value })}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]"
+                    onChange={(e) => handleAllocationFieldChange('paymentMethod', e.target.value)}
+                    className={`w-full rounded-lg border ${allocationErrors.paymentMethod ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]`}
                   >
                     <option value="">Select Method</option>
                     <option value="UPI">UPI</option>
@@ -2228,7 +2316,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.addressLine1}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine1: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine1', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.addressLine1 ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="123 Main Road"
                   />
@@ -2244,7 +2332,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.addressLine2}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine2: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine2', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Near Central Mall"
                   />
@@ -2259,7 +2347,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.city}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, city: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('city', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.city ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai"
                   />
@@ -2275,7 +2363,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.district}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, district: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('district', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.district ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai Suburban"
                   />
@@ -2293,7 +2381,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.state}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, state: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('state', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.state ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Maharashtra"
                   />
@@ -2309,7 +2397,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.pincode}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, pincode: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('pincode', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.pincode ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="400001"
                   />
@@ -2326,7 +2414,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                 <input
                   type="text"
                   value={allocationForm.country}
-                  onChange={(e) => setAllocationForm({ ...allocationForm, country: e.target.value })}
+                  onChange={(e) => handleAllocationFieldChange('country', e.target.value)}
                   className={`w-full rounded-lg border ${allocationErrors.country ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   placeholder="India"
                 />
@@ -2340,14 +2428,14 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <label className="mb-1 block text-[11px] font-bold text-[var(--text)]">
                     Upload payment screenshot (Max 5MB) <span className="text-mst-red">*</span>
                   </label>
-                  <div className={`flex items-center gap-3 w-full rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
+                  <div className={`flex items-center gap-3 w-full min-w-0 rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
                     <label
                       htmlFor="learnScreenshotUploadInput"
                       className="cursor-pointer rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[10px] font-bold text-[var(--text)] hover:bg-[var(--border)] transition-all shrink-0 shadow-sm"
                     >
                       Choose File
                     </label>
-                    <span className="text-[10px] text-[var(--text-muted)] truncate">
+                    <span className="text-[10px] text-[var(--text-muted)] min-w-0 flex-1 truncate">
                       {screenshotFileName ? screenshotFileName : "No file chosen"}
                     </span>
                     <input
@@ -2370,7 +2458,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.additionalNotes}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, additionalNotes: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('additionalNotes', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Payment completed successfully"
                   />

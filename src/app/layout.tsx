@@ -1,28 +1,88 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
 import { AuthProvider } from "@/components/AuthProvider";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import fs from "fs";
-import path from "path";
+import orgSchema from "@/lib/schema/organization.json";
+import ChatBotWidget from "@/components/chatbotWidget/chatbotWidget";
 
-// Programmatically copy public/1.png to app favicon destinations and clean up default favicon
-try {
-  const publicIconPath = path.join(process.cwd(), "public", "1.png");
-  const appFaviconPath = path.join(process.cwd(), "src", "app", "favicon.ico");
-  const appIconPngPath = path.join(process.cwd(), "src", "app", "icon.png");
+export const viewport: Viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+};
 
-  if (fs.existsSync(publicIconPath)) {
-    fs.copyFileSync(publicIconPath, appIconPngPath);
-    if (fs.existsSync(appFaviconPath)) {
-      fs.unlinkSync(appFaviconPath);
-    }
-  }
-} catch (error) {
-  console.error("Failed to automatically setup favicon:", error);
-}
+export const metadata: Metadata = {
+  metadataBase: new URL('https://masterstroke.academy'),
+
+  title: {
+    default: 'Online Blockchain Course in India | Masterstroke Academy',
+    template: '%s | Masterstroke Academy',
+  },
+
+  description:
+    'Live blockchain course in India: 21 modules, on-chain certificate, internship and grant path. Deploy real contracts on MST Chain. See plans.',
+
+  applicationName: 'Masterstroke Academy',
+  authors: [{ name: 'Masterstroke Academy' }],
+  creator: 'Masterstroke Technosoft Pvt. Ltd.',
+  publisher: 'Masterstroke Technosoft Pvt. Ltd.',
+
+  manifest: '/manifest.json',
+
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'MST Academy',
+  },
+
+  alternates: { canonical: '/' },
+
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-snippet': -1,
+      'max-image-preview': 'large',
+      'max-video-preview': -1,
+    },
+  },
+
+  openGraph: {
+    type: 'website',
+    locale: 'en_IN',
+    url: 'https://masterstroke.academy/',
+    siteName: 'Masterstroke Academy',
+    title: 'Online Blockchain Course in India | Masterstroke Academy',
+    description:
+      'Live blockchain course in India: 21 modules, on-chain certificate, internship and grant path. Deploy real contracts on MST Chain.',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Masterstroke Academy - online blockchain course in India',
+      },
+    ],
+  },
+
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Online Blockchain Course in India | Masterstroke Academy',
+    description: 'Live blockchain course: 21 modules, on-chain certificate, internship and grant path.',
+    images: ['/og-image.png'],
+  },
+
+  icons: {
+    icon: '/favicon.ico',
+    apple: '/apple-touch-icon.png',
+  },
+};
 
 const inter = Inter({
   variable: "--font-inter",
@@ -34,62 +94,47 @@ const jetbrains = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Masterstroke Academy | Professional Blockchain Developer Program",
-    template: "%s | Masterstroke Academy",
-  },
-  description:
-    "Master blockchain development with 21 comprehensive modules across 4 phases. Learn Solidity, DeFi, NFTs, DAOs, and more with interactive assessments and live coding.",
-  keywords: [
-    "blockchain",
-    "solidity",
-    "web3",
-    "defi",
-    "nft",
-    "dao",
-    "smart contracts",
-    "cryptocurrency",
-    "ethereum",
-    "developer course",
-    "masterstroke",
-    "MST blockchain",
-  ],
-  authors: [{ name: "Masterstroke Academy" }],
-  creator: "MST Blockchain",
-  icons: {
-    icon: "/1.png",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    siteName: "Masterstroke Academy",
-    title: "Masterstroke Academy | Professional Blockchain Developer Program",
-    description:
-      "21 modules, 4 phases, 123+ lessons. The most comprehensive blockchain developer program with interactive assessments and live code execution.",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Masterstroke Academy",
-    description: "Professional Blockchain Developer Program - Learn. Build. Launch.",
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
-
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable} h-full`} suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable} h-full overflow-x-hidden`} suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link rel="icon" href="/1.png" type="image/png" />
-        <meta name="theme-color" content="#e31e24" />
-        <script
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#000000" />
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-0BTDN5EMY4"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-0BTDN5EMY4');
+          `}
+        </Script>
+        <Script
+          id="service-worker-registration"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function(err) {
+                    console.log('PWA Service Worker registration note:', err);
+                  });
+                });
+              }
+            `,
+          }}
+        />
+        <Script
+          id="content-protection"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               document.addEventListener('copy', function(e) {
@@ -118,6 +163,12 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col antialiased max-w-full overflow-x-hidden">
+        <Script
+          id="org-schema"
+          type="application/ld+json"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
+        />
         <ThemeProvider>
           <AuthProvider>
             <Navbar />
@@ -125,6 +176,7 @@ export default function RootLayout({
             <Footer />
           </AuthProvider>
         </ThemeProvider>
+        <ChatBotWidget />
       </body>
     </html>
   );

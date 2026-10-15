@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuth } from "@/components/AuthProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -102,7 +101,7 @@ function GlassCard({
       style={glow ? { boxShadow: `0 0 40px ${glow}` } : undefined}
     >
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-mst-red/10 opacity-30 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100" />
-      <div className="relative z-10">{children}</div>
+      <div className="relative z-10 h-full">{children}</div>
     </div>
   );
 }
@@ -208,6 +207,16 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
     });
   };
 
+  const handleAllocationFieldChange = (field: keyof typeof allocationForm, value: string) => {
+    setAllocationForm((prev) => ({ ...prev, [field]: value }));
+    setAllocationErrors((prev) => {
+      if (!prev[field]) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
   const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -216,6 +225,12 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
         e.target.value = "";
         return;
       }
+      setAllocationErrors((prev) => {
+        if (!prev.paymentScreenshotUrl) return prev;
+        const newErrors = { ...prev };
+        delete newErrors.paymentScreenshotUrl;
+        return newErrors;
+      });
       setPaymentScreenshotFile(file);
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -1008,22 +1023,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
           const dayDate = d.getDate();
 
           let logins = activeDatesMap.has(key) ? 1 : 0;
-          if (key === selectedDate) {
-            logins = 2;
-          }
 
           let minutes = 0;
           if (activeDatesMap.has(key)) {
             const count = activeDatesMap.get(key) || 1;
-            if (totalStudyMinutes > 0) {
-              minutes = Math.round((count / totalActivityCount) * totalStudyMinutes);
-            } else {
-              minutes = count * 30;
-            }
-          }
-
-          if (key === selectedDate) {
-            minutes = Math.round(minutes * 1.5) + 15;
+            // Estimate daily study time based on activity count rather than 
+            // flawed redistribution of lifetime totalStudyMinutes.
+            minutes = count * 15;
           }
 
           return {
@@ -1101,9 +1107,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
             </div>
 
             <div className="flex items-center gap-3 border-b border-[var(--border)] pb-5 pt-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white">
-                {user.fullName.charAt(0).toUpperCase()}
-              </div>
+              {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+                <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-10 w-10 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white shrink-0">
+                  {user.fullName.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-[var(--text)]">
                   {user.fullName}
@@ -1170,7 +1180,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                         ? `Reason: ${allocationStatus.rejectionNote}. Please resubmit with correct details.`
                         : "Your payment could not be verified. Please resubmit with correct details."
                       : allocationStatus?.status === "PENDING"
-                        ? "We're verifying your payment in between working hours. Your curriculum unlock once it's approved."
+                        ? "We're verifying your payment in between working hours. Your curriculum will unlock once it's approved. Please ignore if already paid."
                         : "Complete your payment to unlock the full curriculum."}
                   </p>
                   {allocationStatus?.status !== "PENDING" && (
@@ -1218,9 +1228,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       <div className="flex h-[calc(100vh-4rem)] bg-[var(--bg)] overflow-hidden">
         <aside className="hidden h-[calc(100vh-4rem)] w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] lg:fixed lg:top-16 lg:left-0 lg:flex z-20">
           <div className="flex items-center gap-3 border-b border-[var(--border)] px-5 py-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white">
-              {user.fullName.charAt(0).toUpperCase()}
-            </div>
+            {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+              <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-10 w-10 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white shrink-0">
+                {user.fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--text)]">
                 {user.fullName}
@@ -1307,7 +1321,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       ? `Reason: ${allocationStatus.rejectionNote}. Please resubmit with correct details.`
                       : "Your payment could not be verified. Please resubmit with correct details."
                     : allocationStatus?.status === "PENDING"
-                      ? "We're verifying your payment in between working hours. Your curriculum unlock once it's approved."
+                      ? "We're verifying your payment in between working hours. Your curriculum will unlock once it's approved. Please ignore if already paid."
                       : "Complete your payment to unlock the full curriculum."}
                 </p>
                 {allocationStatus?.status !== "PENDING" && (
@@ -1358,7 +1372,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
             aria-hidden
           />
 
-          <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:py-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 pb-24 sm:px-6 lg:py-8 lg:pb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 flex items-center justify-between lg:hidden border-b border-[var(--border)] pb-3">
                 <div className="flex items-center gap-3">
@@ -1373,7 +1387,6 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                     Command Center
                   </p>
                 </div>
-                <ThemeToggle />
               </div>
 
               {activeTab === 'profile' ? (
@@ -1583,15 +1596,17 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       //{ label: "Consistency", value: `${analytics.revisionConsistency}%`, icon: TrendingUp, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20" },
                       { label: "Percentile", value: `Top ${analytics.percentile}%`, icon: Trophy, color: "text-mst-red", bg: "bg-mst-red/10 border-mst-red/20" },
                     ].map((s, i) => (
-                      <GlassCard key={s.label} className="!p-6 flex flex-col gap-3 group cursor-default">
-                        <div className={`w-fit rounded-xl border ${s.bg} p-3 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                          <s.icon className={`h-5 w-5 ${s.color}`} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            {s.label}
-                          </p>
-                          <p className="mt-1 text-2xl font-black text-[var(--text)] tracking-tight">{s.value}</p>
+                      <GlassCard key={s.label} className="!p-5 group cursor-default">
+                        <div className="flex flex-col gap-2.5">
+                          <div className={`w-fit rounded-xl border ${s.bg} p-2.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                            <s.icon className={`h-5 w-5 ${s.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                              {s.label}
+                            </p>
+                            <p className="mt-0.5 text-2xl font-black text-[var(--text)] tracking-tight">{s.value}</p>
+                          </div>
                         </div>
                       </GlassCard>
                     ))}
@@ -1684,7 +1699,19 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                                 <Cell key={e.name} fill={e.color} />
                               ))}
                             </Pie>
-                            <Tooltip />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border)',
+                                borderRadius: '10px',
+                                color: 'var(--text)',
+                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+                                padding: '8px 12px',
+                              }}
+                              itemStyle={{ color: 'var(--text)', fontWeight: 600 }}
+                              labelStyle={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}
+                              formatter={(value: any, name: any) => [`${value ?? 0} modules`, name]}
+                            />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -1702,11 +1729,27 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       <h3 className="text-sm font-black text-[var(--text)]">Module Performance</h3>
                       <div className="mt-4 h-48">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analytics.moduleScores.length ? analytics.moduleScores : [{ name: "-", score: 0, moduleId: 0 }]}>
+                          <BarChart
+                            data={analytics.moduleScores.length ? analytics.moduleScores : [{ name: "-", score: 0, moduleId: 0 }]}
+                            margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+                          >
                             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis domain={[0, 100]} tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <Tooltip />
+                            <YAxis domain={[0, 100]} width={25} tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <Tooltip
+                              cursor={{ fill: 'var(--border)', opacity: 0.25 }}
+                              contentStyle={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border)',
+                                borderRadius: '10px',
+                                color: 'var(--text)',
+                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+                                padding: '8px 12px',
+                              }}
+                              itemStyle={{ color: 'var(--text)', fontWeight: 600 }}
+                              labelStyle={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}
+                              formatter={(value: any) => [`${value ?? 0} / 100`, 'Score']}
+                            />
                             <Bar dataKey="score" radius={[4, 4, 0, 0]} fill="#e31e24" maxBarSize={28} />
                           </BarChart>
                         </ResponsiveContainer>
@@ -1778,17 +1821,74 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       )}
                     </GlassCard>
 
-                    <GlassCard>
-                      <h3 className="text-sm font-black text-[var(--text)]">Weekly Study Time</h3>
-                      <div className="mt-4 h-44">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analytics.dailyStudy}>
-                            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="day" tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <Bar dataKey="minutes" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                    <GlassCard className="h-full">
+                      <div className="flex h-full flex-col">
+                        <h3 className="text-sm font-black text-[var(--text)]">Weekly Study Time</h3>
+                        <div className="mt-4 flex-1 min-h-[11rem]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={analytics.dailyStudy}
+                              margin={{ top: 8, right: 6, left: -4, bottom: 12 }}
+                            >
+                              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                              <XAxis 
+                                dataKey="day" 
+                                interval={0} 
+                                tick={(props: any) => {
+                                  const { x, y, payload } = props;
+                                  const raw = String(payload?.value || "");
+                                  const [dayName, dayNum] = raw.split(" ");
+                                  return (
+                                    <g transform={`translate(${x},${y})`}>
+                                      <text
+                                        x={0}
+                                        y={0}
+                                        dy={9}
+                                        textAnchor="middle"
+                                        fill="var(--text-muted)"
+                                        fontSize={10}
+                                        fontWeight={600}
+                                      >
+                                        {dayName}
+                                      </text>
+                                      {dayNum && (
+                                        <text
+                                          x={0}
+                                          y={0}
+                                          dy={20}
+                                          textAnchor="middle"
+                                          fill="var(--text-muted)"
+                                          fontSize={9}
+                                          opacity={0.8}
+                                        >
+                                          {dayNum}
+                                        </text>
+                                      )}
+                                    </g>
+                                  );
+                                }}
+                                axisLine={false} 
+                                tickLine={false} 
+                              />
+                              <YAxis width={22} tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                              <Tooltip 
+                                cursor={{ fill: 'var(--border)', opacity: 0.25 }}
+                                contentStyle={{
+                                  backgroundColor: 'var(--surface)',
+                                  borderColor: 'var(--border)',
+                                  borderRadius: '10px',
+                                  color: 'var(--text)',
+                                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+                                  padding: '8px 12px',
+                                }}
+                                itemStyle={{ color: 'var(--text)', fontWeight: 600 }}
+                                labelStyle={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}
+                                formatter={(value: any) => [`${value ?? 0} mins`, 'Study Time']}
+                              />
+                              <Bar dataKey="minutes" fill="#e31e24" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     </GlassCard>
                   </section>
@@ -2111,7 +2211,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                 <input
                   type="text"
                   value={allocationForm.accountHolderName}
-                  onChange={(e) => setAllocationForm({ ...allocationForm, accountHolderName: e.target.value })}
+                  onChange={(e) => handleAllocationFieldChange('accountHolderName', e.target.value)}
                   className={`w-full rounded-lg border ${allocationErrors.accountHolderName ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   placeholder="Enter account holder name"
                 />
@@ -2128,7 +2228,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="number"
                     value={allocationForm.amountPaid}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, amountPaid: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('amountPaid', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.amountPaid ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="2999"
                   />
@@ -2144,7 +2244,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="date"
                     value={allocationForm.paymentDate}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentDate: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('paymentDate', e.target.value)}
                     max={(() => {
                       const d = new Date();
                       const year = d.getFullYear();
@@ -2152,7 +2252,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       const day = String(d.getDate()).padStart(2, '0');
                       return `${year}-${month}-${day}`;
                     })()}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
+                    className={`w-full rounded-lg border ${allocationErrors.paymentDate ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   />
                   {allocationErrors.paymentDate && (
                     <p className="mt-0.5 text-[10px] text-red-500">{allocationErrors.paymentDate}</p>
@@ -2168,7 +2268,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.transactionId}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, transactionId: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('transactionId', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.transactionId ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="UTR123456789"
                   />
@@ -2183,8 +2283,8 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   </label>
                   <select
                     value={allocationForm.paymentMethod}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentMethod: e.target.value })}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]"
+                    onChange={(e) => handleAllocationFieldChange('paymentMethod', e.target.value)}
+                    className={`w-full rounded-lg border ${allocationErrors.paymentMethod ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]`}
                   >
                     <option value="">Select Method</option>
                     <option value="UPI">UPI</option>
@@ -2204,7 +2304,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.addressLine1}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine1: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine1', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.addressLine1 ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="123 Main Road"
                   />
@@ -2220,7 +2320,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.addressLine2}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine2: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine2', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Near Central Mall"
                   />
@@ -2235,7 +2335,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.city}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, city: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('city', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.city ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai"
                   />
@@ -2251,7 +2351,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.district}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, district: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('district', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.district ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai Suburban"
                   />
@@ -2269,7 +2369,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.state}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, state: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('state', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.state ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Maharashtra"
                   />
@@ -2285,7 +2385,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.pincode}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, pincode: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('pincode', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.pincode ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="400001"
                   />
@@ -2302,7 +2402,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                 <input
                   type="text"
                   value={allocationForm.country}
-                  onChange={(e) => setAllocationForm({ ...allocationForm, country: e.target.value })}
+                  onChange={(e) => handleAllocationFieldChange('country', e.target.value)}
                   className={`w-full rounded-lg border ${allocationErrors.country ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   placeholder="India"
                 />
@@ -2319,14 +2419,14 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       <span className="text-mst-red">*</span>
                     )}
                   </label>
-                  <div className={`flex items-center gap-3 w-full rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
+                  <div className={`flex items-center gap-3 w-full min-w-0 rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
                     <label
                       htmlFor="screenshotUploadInput"
                       className="cursor-pointer rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[10px] font-bold text-[var(--text)] hover:bg-[var(--border)] transition-all shrink-0 shadow-sm"
                     >
                       Choose File
                     </label>
-                    <span className="text-[10px] text-[var(--text-muted)] truncate">
+                    <span className="text-[10px] text-[var(--text-muted)] min-w-0 flex-1 truncate">
                       {screenshotFileName ? screenshotFileName : "No file chosen"}
                     </span>
                     <input
@@ -2352,7 +2452,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.additionalNotes}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, additionalNotes: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('additionalNotes', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Payment completed successfully"
                   />

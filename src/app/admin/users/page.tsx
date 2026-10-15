@@ -189,7 +189,14 @@ export default function UserManagementPage() {
       });
 
       if (!progressRes.ok) {
-        throw new Error(`Failed to fetch progress: ${progressRes.statusText}`);
+        let errorMsg = `Failed to fetch progress: ${progressRes.statusText}`;
+        try {
+          const errData = await progressRes.json();
+          if (errData && errData.message) {
+            errorMsg = errData.message;
+          }
+        } catch (_) {}
+        throw new Error(errorMsg);
       }
 
       const progressJson = await progressRes.json();
@@ -717,17 +724,32 @@ export default function UserManagementPage() {
                           </div>
                         ) : (
                           <div className="flex items-center justify-center gap-2 group min-h-[28px]">
-                            <span>{user.referralPercentage !== undefined ? `${user.referralPercentage}%` : "0%"}</span>
-                            <button
-                              onClick={() => {
-                                setEditingUserId(user.id);
-                                setEditValue(user.referralPercentage || 0);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-1 hover:bg-[var(--bg-muted)] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
-                              title="Edit Referral Percentage"
-                            >
-                              <Pencil size={14} />
-                            </button>
+                            {(() => {
+                              const getRoleDefault = (r?: string) => {
+                                const norm = String(r || "").toLowerCase().trim();
+                                if (norm === "ojt" || norm === "course_only" || norm === "course-only" || norm === "courseonly") return 10;
+                                if (norm === "validator") return 5;
+                                if (norm === "working_professional" || norm === "working-professional" || norm === "workingprofessional" || norm === "web3 enthusiast" || norm === "web3_enthusiast" || norm === "professional") return 2;
+                                return 2.5;
+                              };
+                              const defPct = getRoleDefault(user.role);
+                              const currentPct = user.referralPercentage && user.referralPercentage > 0 ? user.referralPercentage : defPct;
+                              return (
+                                <>
+                                  <span>{`${currentPct}%`}</span>
+                                  <button
+                                    onClick={() => {
+                                      setEditingUserId(user.id);
+                                      setEditValue(currentPct);
+                                    }}
+                                    className="opacity-0 group-hover:opacity-100 transition-opacity rounded p-1 hover:bg-[var(--bg-muted)] text-[var(--text-muted)] hover:text-[var(--text)] cursor-pointer"
+                                    title="Edit Referral Percentage"
+                                  >
+                                    <Pencil size={14} />
+                                  </button>
+                                </>
+                              );
+                            })()}
                           </div>
                         )}
                       </td>
@@ -1148,15 +1170,21 @@ export default function UserManagementPage() {
               </div>
             ) : progressError ? (
               <div className="flex-1 flex flex-col items-center justify-center py-12 text-center px-4">
-                <AlertCircle className="h-12 w-12 text-red-500 mb-2" />
-                <p className="text-sm font-semibold text-[var(--text)]">Error Loading Progress</p>
-                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">{progressError}</p>
-                <button
-                  onClick={() => handleViewProgress(viewingProgressUser)}
-                  className="mt-4 rounded-xl bg-mst-red hover:bg-red-700 px-4 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
-                >
-                  Retry
-                </button>
+                {progressError?.toLowerCase() === "dashboard not found" ? (
+                  <p className="text-sm font-semibold text-[var(--text)]">Dashboard Not Found</p>
+                ) : (
+                  <>
+                    <AlertCircle className="h-12 w-12 text-red-500 mb-2" />
+                    <p className="text-sm font-semibold text-[var(--text)]">Error Loading Progress</p>
+                    <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">{progressError}</p>
+                    <button
+                      onClick={() => handleViewProgress(viewingProgressUser)}
+                      className="mt-4 rounded-xl bg-mst-red hover:bg-red-700 px-4 py-2 text-xs font-semibold text-white transition-colors cursor-pointer"
+                    >
+                      Retry
+                    </button>
+                  </>
+                )}
               </div>
             ) : userProgressData && curriculumData ? (
               <div className="flex-1 overflow-y-auto pr-1">

@@ -37,10 +37,13 @@ export interface AuthUser {
   updatedAt?: string;
   cvFile?: string;
   cvFileName?: string;
+  resume?: string;
+  resumeUrl?: string;
   transactionId?: string;
   referralPercentage?: number;
   courseDiscounts?: CourseDiscount[];
   isPaymentVerified?: boolean;
+  discountPercentage?: number;
 }
 
 export interface RegisterStudentInput {
@@ -54,6 +57,7 @@ export interface RegisterStudentInput {
   referralCode?: string;
   transactionId?: string;
   gstNumber?: string;
+  recaptchaToken?: string;
 }
 
 export interface RegisterValidatorInput {
@@ -66,6 +70,7 @@ export interface RegisterValidatorInput {
   referralCode?: string;
   transactionId?: string;
   gstNumber?: string;
+  recaptchaToken?: string;
 }
 
 export interface RegisterNonValidatorInput {
@@ -77,10 +82,14 @@ export interface RegisterNonValidatorInput {
   referralCode?: string;
   transactionId?: string;
   gstNumber?: string;
+  recaptchaToken?: string;
 }
 
 const SESSION_KEY = "mst-academy-session";
 const USERS_KEY = "mst-academy-users";
+// Must match the cookie name the middleware reads.
+const SESSION_COOKIE = "mst-session";
+const SESSION_COOKIE_MAX_AGE = 60 * 60 * 24 * 7; // 7 days
 
 export const DEMO_ADMIN_EMAIL = "abc@gmail.com";
 export const DEMO_ADMIN_PASSWORD = "ABC123";
@@ -151,12 +160,32 @@ export function getSession(): AuthUser | null {
   }
 }
 
+// The middleware gates protected routes on a cookie, but the session itself
+// lives in localStorage and the backend's own session cookie is set on a
+// different origin (course-api.*), so neither is visible to middleware. Mirror
+// the session into a first-party cookie purely so navigation works.
+//
+// This is a navigation guard, NOT access control - it is client-writable by
+// design. Real enforcement stays on the backend, which rejects unauthenticated
+// API calls regardless of what this cookie says.
+function setSessionCookie(active: boolean) {
+  if (typeof document === "undefined") return;
+  if (active) {
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${SESSION_COOKIE}=1; Path=/; Max-Age=${SESSION_COOKIE_MAX_AGE}; SameSite=Lax${secure}`;
+  } else {
+    document.cookie = `${SESSION_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax`;
+  }
+}
+
 export function setSession(user: AuthUser | null) {
   if (user) {
     const { password: _pw, ...safe } = user;
     localStorage.setItem(SESSION_KEY, JSON.stringify(safe));
+    setSessionCookie(true);
   } else {
     localStorage.removeItem(SESSION_KEY);
+    setSessionCookie(false);
   }
 }
 
@@ -251,6 +280,9 @@ export async function registerStudent(
     if (input.gstNumber) {
       formData.append("GSTIN", input.gstNumber);
     }
+    if (input.recaptchaToken) {
+      formData.append("recaptchaToken", input.recaptchaToken);
+    }
 
     const response = await fetch(`${baseURL}/api/auth/register-student`, {
       method: "POST",
@@ -272,6 +304,7 @@ export async function registerStudent(
       college: studentData.collegeName || input.college,
       registeredAt: new Date().toISOString(),
       transactionId: studentData.transactionId || input.transactionId,
+      discountPercentage: studentData.discountPercentage || 0,
     };
 
     setSession(authUser);
@@ -296,6 +329,7 @@ export async function registerValidator(
       ...(input.referralCode ? { referralCode: input.referralCode } : {}),
       ...(input.transactionId ? { transactionId: input.transactionId } : {}),
       ...(input.gstNumber ? { GSTIN: input.gstNumber } : {}),
+      ...(input.recaptchaToken ? { recaptchaToken: input.recaptchaToken } : {}),
     };
 
     const response = await fetch(`${baseURL}/api/auth/register-validator`, {
@@ -320,6 +354,7 @@ export async function registerValidator(
       phone: input.phone,
       registeredAt: new Date().toISOString(),
       transactionId: validatorData.transactionId || input.transactionId,
+      discountPercentage: validatorData.discountPercentage || 0,
     };
 
     setSession(authUser);
@@ -346,6 +381,7 @@ export async function registerNonValidator(
         transactionId: input.transactionId,
         GSTIN: input.gstNumber,
         mobileNumber: input.phone,
+        ...(input.recaptchaToken ? { recaptchaToken: input.recaptchaToken } : {}),
       }),
     });
 
@@ -363,6 +399,7 @@ export async function registerNonValidator(
       phone: input.phone,
       registeredAt: new Date().toISOString(),
       transactionId: registeredUser.transactionId || input.transactionId,
+      discountPercentage: registeredUser.discountPercentage || 0,
     };
 
     setSession(authUser);
@@ -381,6 +418,7 @@ export async function registerWorkingProfessional(input: {
   referralCode?: string;
   transactionId?: string;
   gstNumber?: string;
+  recaptchaToken?: string;
 }): Promise<{ ok: true; user: AuthUser } | { ok: false; error: string }> {
   try {
     const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
@@ -395,6 +433,7 @@ export async function registerWorkingProfessional(input: {
         transactionId: input.transactionId,
         GSTIN: input.gstNumber,
         mobileNumber: input.phone,
+        ...(input.recaptchaToken ? { recaptchaToken: input.recaptchaToken } : {}),
       }),
     });
 
@@ -412,6 +451,7 @@ export async function registerWorkingProfessional(input: {
       phone: input.phone,
       registeredAt: new Date().toISOString(),
       transactionId: registeredUser.transactionId || input.transactionId,
+      discountPercentage: registeredUser.discountPercentage || 0,
     };
 
     setSession(authUser);
@@ -464,40 +504,75 @@ export async function registerAdmin(input: {
   }
 }
 
-export function roleLabel(role: UserRole | string): string {
-  switch (role) {
-    case "student":
-    case "STUDENT":
-      return "Student";
-    case "validator":
-    case "VALIDATOR":
-      return "Validator";
-    case "non-validator":
-      return "Web3 Enthusiast";
-    case "course_only":
-    case "COURSE_ONLY":
-      return "OJT";
-    case "working_professional":
-    case "working-professional":
-    case "WORKING_PROFESSIONAL":
-      return "Web3 Enthusiast";
-    case "admin":
-    case "ADMIN":
-      return "Admin";
-    case "tutor":
-    case "TUTOR":
-      return "Tutor";
-    case "S_ADMIN":
-    case "s_admin":
-    case "superadmin":
-    case "SUPERADMIN":
-    case "super_admin":
-    case "SUPER_ADMIN":
-    case "super admin":
-      return "Super Admin";
-    default:
-      return String(role).charAt(0).toUpperCase() + String(role).slice(1).toLowerCase();
+export function getReferralPercentageForRole(role?: string): number {
+  if (!role) return 2.5;
+  const raw = String(role).trim().toUpperCase();
+  const normalized = raw.replace(/[-_\s]+/g, "");
+
+  // COURSE_ONLY / OJT -> 10%
+  if (raw === "COURSE_ONLY" || raw === "COURSE ONLY" || raw === "OJT" || normalized === "COURSEONLY" || normalized === "OJT") {
+    return 10;
   }
+
+  // WORKING_PROFESSIONAL / WEB3 ENTHUSIAST -> 2%
+  if (
+    raw === "WORKING_PROFESSIONAL" ||
+    raw === "WORKING PROFESSIONAL" ||
+    raw === "WEB3_ENTHUSIAST" ||
+    raw === "WEB3 ENTHUSIAST" ||
+    normalized === "WORKINGPROFESSIONAL" ||
+    normalized === "WEB3ENTHUSIAST"
+  ) {
+    return 2;
+  }
+
+  // VALIDATOR -> 5%
+  if (raw === "VALIDATOR" || normalized === "VALIDATOR") {
+    return 5;
+  }
+
+  // STUDENT -> 2.5%
+  if (raw === "STUDENT" || normalized === "STUDENT") {
+    return 2.5;
+  }
+
+  return 2.5;
+}
+
+export function roleLabel(role: UserRole | string): string {
+  if (!role) return "Student";
+  const raw = String(role).trim().toUpperCase();
+  const normalized = raw.replace(/[-_\s]+/g, "");
+
+  if (raw === "COURSE_ONLY" || raw === "COURSE ONLY" || normalized === "COURSEONLY" || raw === "OJT") {
+    return "OJT";
+  }
+  if (
+    raw === "WORKING_PROFESSIONAL" ||
+    raw === "WORKING PROFESSIONAL" ||
+    raw === "NON-VALIDATOR" ||
+    raw === "NON_VALIDATOR" ||
+    raw === "WEB3_ENTHUSIAST" ||
+    raw === "WEB3 ENTHUSIAST" ||
+    normalized === "WORKINGPROFESSIONAL" ||
+    normalized === "WEB3ENTHUSIAST" ||
+    normalized === "NONVALIDATOR"
+  ) {
+    return "Web3 Enthusiast";
+  }
+  if (raw === "VALIDATOR" || normalized === "VALIDATOR") {
+    return "Validator";
+  }
+  if (raw === "STUDENT" || normalized === "STUDENT") {
+    return "Student";
+  }
+  if (raw === "ADMIN" || raw === "S_ADMIN" || raw === "SUPERADMIN" || raw === "SUPER_ADMIN" || normalized === "SUPERADMIN") {
+    return "Admin";
+  }
+  if (raw === "TUTOR") {
+    return "Tutor";
+  }
+  return String(role).charAt(0).toUpperCase() + String(role).slice(1).toLowerCase();
 }
 
 export function dashboardPath(role: UserRole | string | undefined): string {
@@ -546,10 +621,11 @@ export function updateUser(id: string, updates: Partial<AuthUser>) {
   if (index !== -1) {
     users[index] = { ...users[index], ...updates };
     saveUsers(users);
-    const session = getSession();
-    if (session?.id === id) {
-      setSession(users[index]);
-    }
+  }
+  
+  const session = getSession();
+  if (session?.id === id) {
+    setSession({ ...session, ...updates });
   }
 }
 

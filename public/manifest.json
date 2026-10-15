@@ -1,0 +1,54 @@
+{
+  "name": "Masterstroke Academy",
+  "short_name": "MST Academy",
+  "description": "A structured, college-integrated programme - interactive lessons, live code, rigorous assessments, and a path from cryptography to funded founder.",
+  "start_url": "/",
+  "id": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1916x867",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Masterstroke Academy Platform on Desktop"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "397x857",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Masterstroke Academy on Mobile"
+    }
+  ]
+}

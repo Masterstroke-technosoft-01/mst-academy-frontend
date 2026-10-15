@@ -16,6 +16,7 @@ import {
   UserPlus,
   LogIn,
   GraduationCap,
+  Newspaper,
   Shield,
   Users,
   Trophy,
@@ -44,13 +45,13 @@ export function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur-xl">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2.5 sm:px-6">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2 sm:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center group relative z-10 h-16 overflow-hidden shrink-0">
+        <Link href="/" className="flex items-center group relative z-10 h-16 overflow-hidden shrink-0 max-w-[115px] min-[380px]:max-w-[140px] sm:max-w-none">
           <img
-            src="/Acadmy Logo.png"
+            src="/Acadmy Logo.webp"
             alt="Masterstroke Academy"
-            className="h-32 sm:h-44 w-auto -my-6 transition-transform group-hover:scale-105 object-contain"
+            className="h-32 min-[380px]:h-36 sm:h-44 w-auto -my-6 transition-transform group-hover:scale-105 object-contain object-left"
           />
         </Link>
 
@@ -58,29 +59,36 @@ export function Navbar() {
         <nav className="hidden items-center gap-1 lg:flex">
           <Link
             href="/academy-overview"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <GraduationCap size={16} />
             Curriculum
           </Link>
           <Link
             href="/leaderboard"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <Trophy size={16} />
             Leaderboard
           </Link>
           <Link
             href="/learn"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <BookOpen size={16} />
             Learning Tree
           </Link>
+          <Link
+            href="/blogs"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+          >
+            <Newspaper size={16} />
+            Blogs
+          </Link>
           {showUserNav && (
             <Link
               href={dashboardHref}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
             >
               <LayoutDashboard size={16} />
               Dashboard
@@ -89,7 +97,7 @@ export function Navbar() {
         </nav>
 
         {/* Right side */}
-        <div className="flex items-center gap-1 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
           <ThemeToggle />
 
           {showUserNav ? (
@@ -103,9 +111,13 @@ export function Navbar() {
                 }}
                 className="flex items-center gap-1.5 rounded-lg border border-transparent sm:border-white/10 p-0.5 sm:px-3.5 sm:py-2 text-xs font-medium text-[var(--nav-text)] transition hover:border-mst-red/50 hover:bg-mst-red/10 sm:text-sm"
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-mst-red text-[10px] font-bold text-white">
-                  {user.fullName?.charAt(0).toUpperCase()}
-                </div>
+                {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+                  <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-6 w-6 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-mst-red text-[10px] font-bold text-white shrink-0">
+                    {user.fullName?.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="hidden max-w-[100px] truncate sm:inline">{user.fullName?.split(" ")[0]}</span>
               </Link>
               <button
@@ -132,28 +144,11 @@ export function Navbar() {
                 <LogOut size={16} />
               </button>
             </div>
-          ) : (
-            <div className="hidden items-center gap-2 sm:flex">
-              <Link
-                href="/login"
-                className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-[var(--nav-text)] transition hover:border-mst-red/50 hover:bg-mst-red/10"
-              >
-                <LogIn size={14} />
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                className="hidden items-center gap-1.5 rounded-lg border border-white/10 px-3.5 py-2 text-sm font-medium text-[var(--nav-text)] transition hover:border-mst-red/50 hover:bg-mst-red/10 lg:flex"
-              >
-                <UserPlus size={14} />
-                Register
-              </Link>
-            </div>
-          )}
+          ) : null}
 
           <Link
-            href="/learn"
-            className="rounded-xl bg-gradient-to-r from-mst-red to-red-600 px-2 py-1 text-[9px] font-bold text-white shadow-lg shadow-mst-red/25 transition hover:shadow-mst-red/40 hover:brightness-110 active:scale-[0.98] sm:px-5 sm:py-2.5 sm:text-sm whitespace-nowrap"
+            href={showUserNav ? "/learn" : "/register"}
+            className="rounded-lg sm:rounded-xl bg-gradient-to-r from-mst-red to-red-600 px-1.5 py-1 text-[8px] min-[360px]:text-[9px] min-[360px]:px-2 font-bold text-white shadow-md transition hover:shadow-mst-red/40 hover:brightness-110 active:scale-[0.98] sm:px-5 sm:py-2.5 sm:text-sm whitespace-nowrap"
           >
             Start Learning
           </Link>
@@ -161,7 +156,7 @@ export function Navbar() {
           <button
             type="button"
             onClick={switchPortal}
-            className="flex items-center gap-1 rounded-xl bg-gradient-to-r from-[var(--accent-purple)] to-purple-600 px-2 py-1 text-[9px] font-bold text-white shadow-lg shadow-[var(--accent-purple)]/25 transition hover:shadow-[var(--accent-purple)]/40 hover:brightness-110 active:scale-[0.98] sm:px-5 sm:py-2.5 sm:text-sm whitespace-nowrap"
+            className="flex items-center gap-0.5 sm:gap-1 rounded-lg sm:rounded-xl bg-gradient-to-r from-[var(--accent-purple)] to-purple-600 px-1.5 py-1 text-[8px] min-[360px]:text-[9px] min-[360px]:px-2 font-bold text-white shadow-md transition hover:shadow-[var(--accent-purple)]/40 hover:brightness-110 active:scale-[0.98] sm:px-5 sm:py-2.5 sm:text-sm whitespace-nowrap"
           >
             <ArrowLeftRight size={10} className="sm:w-3.5 sm:h-3.5" />
             Events
@@ -171,9 +166,10 @@ export function Navbar() {
           <button
             type="button"
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="rounded-lg p-1.5 text-[var(--nav-text)] transition hover:bg-white/10 lg:hidden"
+            className="rounded-lg p-1 sm:p-2 text-[var(--nav-text)] transition hover:bg-white/10 active:scale-95 touch-manipulation cursor-pointer lg:hidden shrink-0"
+            aria-label={mobileOpen ? "Close navigation menu" : "Open navigation menu"}
           >
-            {mobileOpen ? <X size={18} /> : <Menu size={18} />}
+            {mobileOpen ? <X size={18} className="sm:w-5 sm:h-5" /> : <Menu size={18} className="sm:w-5 sm:h-5" />}
           </button>
         </div>
       </div>
@@ -205,6 +201,14 @@ export function Navbar() {
             >
               <BookOpen size={18} />
               Learning Tree
+            </Link>
+            <Link
+              href="/blogs"
+              onClick={() => setMobileOpen(false)}
+              className="flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-[var(--nav-text)] transition hover:bg-white/10"
+            >
+              <Newspaper size={18} />
+              Blogs
             </Link>
             <button
               type="button"
@@ -240,9 +244,13 @@ export function Navbar() {
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-xl transition"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mst-red text-xs font-bold text-white">
-                    {user.fullName?.charAt(0).toUpperCase()}
-                  </div>
+                  {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+                    <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-8 w-8 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mst-red text-xs font-bold text-white shrink-0">
+                      {user.fullName?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-[var(--nav-text)]">{user.fullName}</p>
                     <p className="text-xs text-[var(--nav-text)]/50">{user.email}</p>

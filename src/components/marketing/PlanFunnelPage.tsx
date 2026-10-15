@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowLeft,
   ArrowRight,
   BadgeCheck,
   Briefcase,
@@ -63,9 +65,9 @@ export function PlanFunnelPage({
   testimonials,
   faqs,
 }: PlanFunnelPageProps) {
+  const router = useRouter();
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const [showStickyBar, setShowStickyBar] = useState(false);
   const { rate: usdRate } = useCurrencyRate();
   const discountAmount = useMemo(() => {
     if (originalPrice === undefined) return 0;
@@ -79,21 +81,29 @@ export function PlanFunnelPage({
     return () => window.clearInterval(interval);
   }, [testimonials.length]);
 
-  useEffect(() => {
-    const onScroll = () => setShowStickyBar(window.scrollY > 360);
-    onScroll();
-    window.addEventListener("scroll", onScroll);
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
   return (
     <div className="min-h-screen bg-[var(--bg)]">
       <div className="pointer-events-none fixed inset-0 bg-grid opacity-40" aria-hidden />
-      <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
+      <div className="relative mx-auto max-w-6xl px-4 pt-12 pb-6 sm:px-6 sm:pt-16 sm:pb-8">
         <RevealSection>
           <div className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/80 p-8 shadow-xl backdrop-blur-md sm:p-12">
             <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-mst-red/10 blur-3xl" />
             <div className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-purple-500/10 blur-3xl" />
+            <div className="mb-6">
+              <Link
+                href="/#pricing"
+                onClick={(e) => {
+                  if (typeof window !== "undefined" && window.history.length > 1 && document.referrer.includes(window.location.host)) {
+                    e.preventDefault();
+                    router.back();
+                  }
+                }}
+                className="inline-flex items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)]/80 px-3.5 py-1.5 text-xs font-bold text-[var(--text-muted)] transition-all hover:border-mst-red/40 hover:bg-mst-red/10 hover:text-mst-red group"
+              >
+                <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-1" />
+                Back
+              </Link>
+            </div>
             <p className="inline-flex items-center gap-2 rounded-full border border-mst-red/30 bg-mst-red/10 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-mst-red">
               <Sparkles className="h-3.5 w-3.5" />
               Enrollment Funnel
@@ -114,7 +124,7 @@ export function PlanFunnelPage({
               <Typewriter
                 strings={[
                   "Real knowledge with execution.",
-                  "Paid internship with real projects.",
+                  internshipIncluded ? "Paid internship with real projects." : (planId === "courseOnly" ? "On Job Training with real projects." : "Ecosystem contribution & ownership."),
                   "Mentorship that drives placement outcomes.",
                   "Learn. Build. Ship. Grow.",
                 ]}
@@ -215,7 +225,7 @@ export function PlanFunnelPage({
                 {fractionIncluded && (
                   <p className="flex items-start gap-2 text-sm text-[var(--text-muted)]">
                     <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-mst-red" />
-                    1 node allocation with 19 years daily MSTC reward-coin participation.
+                    1 Fraction with 19 years daily MSTC reward-coin participation.
                   </p>
                 )}
                 {validatorPortalAccess && (
@@ -335,46 +345,24 @@ export function PlanFunnelPage({
           </div>
         </RevealSection>
 
-        {/* <RevealSection className="mt-8">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-center"> */}
-        {/* <p className="text-sm text-[var(--text-muted)]">
-              Start now and unlock guided learning, practical execution, and mentorship-driven outcomes.
-            </p> */}
-        {/* <div className="mt-4 flex flex-wrap items-center justify-center gap-3"> */}
-        {/* <Link
-                href={`/register?plan=${planId}`}
-                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-mst-red via-red-600 to-mst-red px-7 py-3 text-sm font-bold text-white shadow-lg shadow-mst-red/25 transition hover:shadow-xl"
-              >
-                Buy Course Now
-                <ArrowRight className="h-4 w-4" />
-              </Link> */}
-        {/* </div>
-          </div>
-        </RevealSection> */}
-      </div>
-
-      {showStickyBar && (
-        <div className="fixed bottom-0 left-0 right-0 z-[130] border-t border-[var(--border)] bg-[var(--surface)]/95 px-4 py-3 backdrop-blur-md">
-          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{name}</p>
-              <p className="text-sm text-[var(--text)]">
-                {originalPrice && originalPrice !== offerPrice && (
-                  <span className="line-through text-[var(--text-muted)] mr-2">{usdRate ? `Rs ${originalPrice.toLocaleString("en-IN")} / $${convertINRtoUSD(originalPrice, usdRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `Rs ${originalPrice.toLocaleString("en-IN")}`}</span>
-                )}
-                <span className="font-black text-mst-red">{usdRate ? `Rs ${offerPrice.toLocaleString("en-IN")} / $${convertINRtoUSD(offerPrice, usdRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `Rs ${offerPrice.toLocaleString("en-IN")}`}</span>
-              </p>
-            </div>
-            {/* <Link
-              href={`/register?plan=${planId}`}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-mst-red to-red-600 px-5 py-2.5 text-xs font-bold text-white"
-            >
-              Buy Course Now
-              <ArrowRight className="h-3.5 w-3.5" />
-            </Link> */}
-          </div>
+        <div className="mt-6 flex w-full flex-col items-center justify-center text-center sm:mt-8">
+          <p className="text-center text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{name}</p>
+          <p className="mt-1 text-center text-sm text-[var(--text)]">
+            {originalPrice && originalPrice !== offerPrice && (
+              <span className="line-through text-[var(--text-muted)] mr-2">
+                {usdRate
+                  ? `Rs ${originalPrice.toLocaleString("en-IN")} / $${convertINRtoUSD(originalPrice, usdRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                  : `Rs ${originalPrice.toLocaleString("en-IN")}`}
+              </span>
+            )}
+            <span className="font-black text-mst-red">
+              {usdRate
+                ? `Rs ${offerPrice.toLocaleString("en-IN")} / $${convertINRtoUSD(offerPrice, usdRate).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                : `Rs ${offerPrice.toLocaleString("en-IN")}`}
+            </span>
+          </p>
         </div>
-      )}
+      </div>
     </div>
   );
 }
