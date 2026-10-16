@@ -605,7 +605,7 @@ export function RegisterForm() {
     const base = selectedPlan.price;
     const discountAmount = (base * discountPercent) / 100;
     const discountedBase = base - discountAmount;
-    const total = Math.round(discountedBase * 1.18 * 100) / 100;
+    const total = discountedBase;
 
     if (allocationStatus?.status === "REJECTED") {
       setAllocationForm({
@@ -738,8 +738,7 @@ export function RegisterForm() {
     const base = selectedPlan.price;
     const discountAmount = (base * discountPercent) / 100;
     const discountedBase = base - discountAmount;
-    const gst = discountedBase * 0.18;
-    const total = discountedBase * 1.18;
+    const total = discountedBase;
     const isPending = allocationStatus?.status === "PENDING";
     const isRejected = allocationStatus?.status === "REJECTED";
 
@@ -780,44 +779,56 @@ export function RegisterForm() {
         <div className="space-y-4">
           <DemoFee amount={base} discountedAmount={discountedBase} discountPercent={discountPercent} />
 
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-muted)] p-5">
-            <FieldLabel>Scan to Pay</FieldLabel>
-            <div className="flex flex-col md:flex-row items-stretch justify-center gap-6 text-left">
-              <div className="flex flex-col items-center justify-center gap-2 text-center shrink-0 w-full md:max-w-[200px]">
-                <div className="relative overflow-hidden rounded-2xl border border-[var(--border)] bg-white p-3 shadow-md transition-transform hover:scale-[1.02]">
-                  <img
-                    src="./MasterstrokePaymentQRCode.jpg"
-                    alt="Payment QR Code"
-                    className="h-[140px] w-[140px] object-contain"
-                  />
+          <div className="text-left">
+            {/* Bank Details & Amount combined in ONE box */}
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 shadow-sm space-y-4">
+              <div>
+                <FieldLabel>Bank Details</FieldLabel>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm mt-3">
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Account Name</span>
+                    <span className="font-bold text-[var(--text)] text-sm select-all break-words">SMART ANGELOS FOUNDATION</span>
+                  </div>
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Account Number</span>
+                    <span className="font-bold text-[var(--text)] text-sm font-mono select-all">100211590045</span>
+                  </div>
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">IFSC Code</span>
+                    <span className="font-bold text-[var(--text)] text-sm font-mono select-all">INDB0001375</span>
+                  </div>
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Bank & Branch</span>
+                    <span className="font-bold text-[var(--text)] text-sm select-all break-words">MUKUNDNAGAR SWARGET PUNE BRANCH</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                    Plan: {selectedPlan.label}
-                  </h4>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                      <span className="text-[var(--text-muted)]">Role Amount:</span>
-                      <span className="font-bold text-[var(--text)]">₹{base.toLocaleString('en-IN')}</span>
-                    </div>
-                    {discountPercent > 0 && (
-                      <div className="flex justify-between border-b border-[var(--border)] pb-1.5 text-green-600">
-                        <span>Discount ({discountPercent}%):</span>
-                        <span className="font-bold">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                      <span className="text-[var(--text-muted)]">18% GST:</span>
-                      <span className="font-bold text-[var(--text)]">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                    </div>
+              {/* Amount inside the same box */}
+              <div className="pt-3 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[var(--text-muted)] block">Plan</span>
+                    <span className="font-bold text-mst-red text-sm uppercase">{selectedPlan.label}</span>
                   </div>
+                  <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+                  <div>
+                    <span className="text-xs uppercase font-bold text-[var(--text-muted)] block">Role Amount</span>
+                    <span className="font-bold text-[var(--text)] text-sm">₹{base.toLocaleString('en-IN')}</span>
+                  </div>
+                  {discountPercent > 0 && (
+                    <>
+                      <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+                      <div>
+                        <span className="text-xs uppercase font-bold text-green-600 block">Discount ({discountPercent}%)</span>
+                        <span className="font-bold text-green-600 text-sm">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                      </div>
+                    </>
+                  )}
                 </div>
-                <div className="flex justify-between items-baseline pt-3 mt-4 border-t border-[var(--border)]">
-                  <span className="font-black text-xs text-[var(--text)]">Total (Incl. GST):</span>
-                  <span className="font-black text-mst-red text-base whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                <div className="flex items-center gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border)] w-full sm:w-auto justify-between sm:justify-end">
+                  <span className="text-sm font-black uppercase text-[var(--text-muted)]">Total:</span>
+                  <span className="text-lg font-black text-mst-red whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                 </div>
               </div>
             </div>
