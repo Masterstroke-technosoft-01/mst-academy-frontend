@@ -45,6 +45,15 @@ import {
   Trophy,
   Zap,
   Monitor,
+  Building2,
+  Check,
+  Copy,
+  Landmark,
+  User,
+  CreditCard,
+  QrCode,
+  MapPin,
+  FileText,
 } from "lucide-react";
 import { playExpand, playNavigate, playSelect } from "@/lib/sounds";
 import { ModuleVideoModal } from "./ModuleVideoModal";
@@ -713,6 +722,13 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
   const [screenshotFileName, setScreenshotFileName] = useState("");
   const [allocationErrors, setAllocationErrors] = useState<Record<string, string>>({});
   const [isSubmittingAllocation, setIsSubmittingAllocation] = useState(false);
+  const [copiedBankKey, setCopiedBankKey] = useState<string | null>(null);
+
+  const handleCopyBank = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBankKey(key);
+    setTimeout(() => setCopiedBankKey(null), 2000);
+  };
   const [paymentToast, setPaymentToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const showPaymentToast = (message: string, type: "success" | "error" = "success") => {
@@ -2120,87 +2136,201 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
               </button>
             </div>
 
-            <div className="mb-4 shrink-0 text-left space-y-2">
-              {/* Bank Details & Amount combined in ONE box */}
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 shadow-sm space-y-4">
-                <div>
-                  <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                    Bank Details
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Account Name</span>
-                      <span className="font-bold text-[var(--text)] text-sm select-all break-words">SMART ANGELOS FOUNDATION</span>
-                    </div>
-                    <div>
-                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Account Number</span>
-                      <span className="font-bold text-[var(--text)] text-sm font-mono select-all">100211590045</span>
-                    </div>
-                    <div>
-                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">IFSC Code</span>
-                      <span className="font-bold text-[var(--text)] text-sm font-mono select-all">INDB0001375</span>
-                    </div>
-                    <div>
-                      <span className="text-xs uppercase font-bold text-[var(--text-muted)] block mb-1">Bank & Branch</span>
-                      <span className="font-bold text-[var(--text)] text-sm select-all break-words">MUKUNDNAGAR SWARGET PUNE BRANCH</span>
-                    </div>
+            <div className="mb-4 space-y-3.5 shrink-0 text-left">
+              {/* Bank Details Card */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-sm text-left">
+                <div className="flex items-center gap-3.5 mb-5">
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
+                    style={{ backgroundColor: '#eaf2ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+                  >
+                    <Landmark className="h-6 w-6" strokeWidth={2.3} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-extrabold text-[var(--text)] tracking-tight">
+                      Bank Details
+                    </h4>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      Transfer the amount to the below account details
+                    </p>
                   </div>
                 </div>
 
-                {/* Amount inside the same box */}
-                {(() => {
-                  const roleStr = (userProfile?.role || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
-                  let pricing = null;
-                  if (roleStr === "courseonly" || roleStr === "ojt") {
-                    pricing = { name: "OJT", base: 4999 };
-                  } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
-                    pricing = { name: "Working Professional - Web3 Enthusiast", base: 24999 };
-                  } else if (roleStr === "validator") {
-                    pricing = { name: "Validator", base: 9999 };
-                  } else if (roleStr === "student") {
-                    pricing = { name: "Student", base: 19999 };
-                  }
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-1">
+                  {/* Field 1: ACCOUNT NAME */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <User className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NAME
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm tracking-wide">
+                      SMART ANGELOS FOUNDATION
+                    </p>
+                  </div>
 
-                  if (!pricing) return null;
+                  {/* Field 2: ACCOUNT NUMBER */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NUMBER
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        100211590045
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("100211590045", "acc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy Account Number"
+                      >
+                        {copiedBankKey === "acc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                  const base = pricing.base;
-                  const discountPercent = apiDiscount !== null ? apiDiscount : 0;
-                  const discountAmount = (base * discountPercent) / 100;
-                  const discountedBase = base - discountAmount;
-                  const total = discountedBase;
+                  {/* Field 3: IFSC CODE */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <QrCode className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        IFSC CODE
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        INDB0001375
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("INDB0001375", "ifsc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy IFSC Code"
+                      >
+                        {copiedBankKey === "ifsc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
 
-                  return (
-                    <div className="pt-3 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-3">
-                      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+                  {/* Field 4: BANK & BRANCH */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        BANK & BRANCH
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm leading-snug">
+                      MUKUNDNAGAR SWARGET PUNE BRANCH
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan Summary Card - Reduced Size */}
+              {(() => {
+                const roleStr = (userProfile?.role || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
+                let pricing = null;
+                if (roleStr === "courseonly" || roleStr === "ojt") {
+                  pricing = { name: "OJT", base: 4999 };
+                } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
+                  pricing = { name: "Working Professional", base: 24999 };
+                } else if (roleStr === "validator") {
+                  pricing = { name: "Validator", base: 9999 };
+                } else {
+                  pricing = { name: "Student", base: 19999 };
+                }
+
+                const base = pricing.base;
+                const discountPercent = apiDiscount !== null ? apiDiscount : 0;
+                const discountAmount = (base * discountPercent) / 100;
+                const totalPayable = base - discountAmount;
+
+                return (
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm text-left">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border shadow-sm"
+                        style={{ backgroundColor: '#e6fbf7', color: '#0d9488', borderColor: '#99f6e4' }}
+                      >
+                        <FileText className="h-5 w-5" strokeWidth={2.3} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-[var(--text)] tracking-tight">
+                          Plan Summary
+                        </h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          Details of the selected program
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 md:gap-5">
                         <div>
-                          <span className="text-xs uppercase font-bold text-[var(--text-muted)] block">Plan</span>
-                          <span className="font-bold text-mst-red text-sm uppercase">{pricing.name}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            PLAN
+                          </span>
+                          <span className="font-black text-xs sm:text-sm text-mst-red uppercase whitespace-nowrap">
+                            {pricing.name}
+                          </span>
                         </div>
-                        <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+
+                        <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+
                         <div>
-                          <span className="text-xs uppercase font-bold text-[var(--text-muted)] block">Role Amount</span>
-                          <span className="font-bold text-[var(--text)] text-sm">₹{base.toLocaleString('en-IN')}</span>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            ROLE AMOUNT
+                          </span>
+                          <span className="font-extrabold text-xs sm:text-sm text-[var(--text)] whitespace-nowrap">
+                            ₹{base.toLocaleString('en-IN')}
+                          </span>
                         </div>
+
                         {discountPercent > 0 && (
                           <>
-                            <div className="hidden sm:block h-6 w-px bg-[var(--border)]" />
+                            <div className="h-7 w-px bg-[var(--border)] shrink-0" />
                             <div>
-                              <span className="text-xs uppercase font-bold text-green-600 block">Discount ({discountPercent}%)</span>
-                              <span className="font-bold text-green-600 text-sm">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block mb-0.5">
+                                DISCOUNT ({discountPercent}%)
+                              </span>
+                              <span className="font-extrabold text-xs sm:text-sm text-emerald-600 whitespace-nowrap">
+                                -₹{discountAmount.toLocaleString('en-IN')}
+                              </span>
                             </div>
                           </>
                         )}
                       </div>
-                      <div className="flex items-center gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border)] w-full sm:w-auto justify-between sm:justify-end">
-                        <span className="text-sm font-black uppercase text-[var(--text-muted)]">Total:</span>
-                        <span className="text-lg font-black text-mst-red whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                      <div
+                        className="w-full sm:w-auto shrink-0 rounded-xl border px-3.5 py-1.5 text-left sm:text-right"
+                        style={{ backgroundColor: '#fff1f2', borderColor: '#fecdd3' }}
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-rose-500 block">
+                          TOTAL AMOUNT
+                        </span>
+                        <span className="text-base sm:text-lg font-black text-mst-red tracking-tight block whitespace-nowrap">
+                          ₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
+                  </div>
+                );
+              })()}
 
-              <p className="text-[10px] text-[var(--text-muted)] text-center pt-1">
+              <p className="text-center text-xs text-[var(--text-muted)] pt-1">
                 Already paid? Fill in the transaction details below so we can verify it.
               </p>
             </div>
