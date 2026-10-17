@@ -5,7 +5,7 @@ import Script from "next/script";
 import { Calendar, User, Clock, ArrowLeft, Sparkles, BookOpen } from "lucide-react";
 import { getPostBySlug, generateBlogSchemas } from "@/lib/blog";
 
-const CMS_URL = process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy";
+const CMS_URL = (process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy").replace(/\/+$/, "");
 const SITE_TOKEN = process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "site_token_demo_mst_academy_1785489667016";
 
 type Props = {
@@ -34,7 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const ogDescription = post.ogDescription || description;
 
   const canonicalUrl = post.canonical || `https://masterstroke.academy/blogs/${slug}`;
-  const rawImage = post.ogImage || post.coverImage || post.image || post.featuredImage || `/api/og?title=${encodeURIComponent(ogTitle)}`;
+  const rawImage = post.ogImage || post.coverImage || post.image || post.featuredImage || post.cardImage || `/api/og?title=${encodeURIComponent(ogTitle)}`;
   const absoluteOgImage = rawImage.startsWith("http") ? rawImage : `https://masterstroke.academy${rawImage}`;
 
   const allKeywords = [
@@ -93,7 +93,7 @@ export default async function BlogPostPage({ params }: Props) {
       : post.author?.name || "Masterstroke Academy";
   const authorAvatar =
     typeof post.author === "object" ? post.author?.avatar : null;
-  const coverImage = post.coverImage || post.image || post.featuredImage;
+  const coverImage = post.coverImage || post.image || post.featuredImage || post.cardImage;
   const dateStr = post.publishedAt || post.createdAt;
   const formattedDate = dateStr
     ? new Date(dateStr).toLocaleDateString("en-US", {

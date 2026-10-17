@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import { Sparkles, Calendar, Clock, ArrowRight, User } from "lucide-react";
 import type { BlogPost } from "@/lib/blog";
 
-const CMS_URL = process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy";
+const CMS_URL = (process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy").replace(/\/+$/, "");
 const SITE_TOKEN = process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "site_token_demo_mst_academy_1785489667016";
 
 interface BlogListClientProps {
@@ -94,7 +94,7 @@ export function BlogListClient({ initialPosts = [] }: BlogListClientProps) {
                 typeof post.author === "string"
                   ? post.author
                   : post.author?.name || "Masterstroke Academy";
-              const coverImg = post.coverImage || post.image || post.featuredImage;
+              const coverImg = post.coverImage || post.image || post.featuredImage || post.cardImage;
               const dateStr = post.publishedAt || post.createdAt;
               const formattedDate = dateStr
                 ? new Date(dateStr).toLocaleDateString("en-US", {

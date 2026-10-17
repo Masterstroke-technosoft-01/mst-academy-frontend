@@ -1,4 +1,4 @@
-const CMS_URL = process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy";
+const CMS_URL = (process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy").replace(/\/+$/, "");
 const SITE_TOKEN = process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "site_token_demo_mst_academy_1785489667016";
 
 export interface FAQItem {
@@ -23,6 +23,7 @@ export interface BlogPost {
   coverImage?: string;
   image?: string;
   featuredImage?: string;
+  cardImage?: string;
   ogImage?: string;
   ogTitle?: string;
   ogDescription?: string;
@@ -410,6 +411,7 @@ export function generateBlogSchemas(post: BlogPost, slug: string) {
     post.coverImage ||
     post.image ||
     post.featuredImage ||
+    post.cardImage ||
     `https://masterstroke.academy/api/og?title=${encodeURIComponent(headline)}`;
   const absoluteImage = image.startsWith("http") ? image : `https://masterstroke.academy${image}`;
 
