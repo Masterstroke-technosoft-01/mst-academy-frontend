@@ -57,6 +57,13 @@ import {
   Menu,
   X,
   Lock,
+  Building2,
+  Check,
+  Landmark,
+  CreditCard,
+  QrCode,
+  MapPin,
+  FileText,
 } from "lucide-react";
 import { StudentProfile } from "@/components/dashboard/StudentProfile";
 import { ReferAndEarnTab } from "@/components/dashboard/ReferAndEarnTab";
@@ -163,6 +170,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   const [isSubmittingAllocation, setIsSubmittingAllocation] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showRegPopup, setShowRegPopup] = useState(false);
+  const [copiedBankKey, setCopiedBankKey] = useState<string | null>(null);
+
+  const handleCopyBank = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBankKey(key);
+    setTimeout(() => setCopiedBankKey(null), 2000);
+  };
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -326,6 +340,34 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
     setAllocationErrors({});
     setIsSubmittingAllocation(true);
+
+    const isDemoUser = Boolean(
+      user?.id?.startsWith("demo-") ||
+      user?.email?.toLowerCase().includes("demo") ||
+      (user as any)?.isDemo
+    );
+
+    if (isDemoUser) {
+      showToast(
+        isResubmit ? "Payment resubmitted for review!" : "Course allocation request submitted successfully!",
+        "success"
+      );
+      setAllocationStatus({
+        id: "demo-purchase-001",
+        status: "PENDING",
+        rejectionNote: null,
+        accountHolderName: allocationForm.accountHolderName,
+        category: allocationForm.category,
+        amountPaid: Number(allocationForm.amountPaid),
+        paymentDate: allocationForm.paymentDate,
+        transactionId: allocationForm.transactionId,
+        paymentMethod: allocationForm.paymentMethod,
+        paymentScreenshotUrl: allocationForm.paymentScreenshotUrl,
+      });
+      setIsAllocationModalOpen(false);
+      setIsSubmittingAllocation(false);
+      return;
+    }
 
     try {
       const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
@@ -627,6 +669,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       if (hash === "#profile") return "profile";
       if (hash === "#refer") return "refer";
       if (hash === "#submissions") return "submissions";
+      if (hash === "#learning-tree" || hash === "#tree" || hash === "#learn") return "learning-tree";
     }
     return "overview";
   });
@@ -646,8 +689,16 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       else if (hash === "#profile") setActiveTab("profile");
       else if (hash === "#refer") setActiveTab("refer");
       else if (hash === "#submissions") setActiveTab("submissions");
+      else if (hash.includes("learn") || hash.includes("tree")) {
+        window.location.href = "/learn";
+      }
       else setActiveTab("overview");
     };
+
+    if (typeof window !== "undefined" && (window.location.hash.includes("learn") || window.location.hash.includes("tree"))) {
+      window.location.href = "/learn";
+      return;
+    }
 
     handleHashChange();
     window.addEventListener("hashchange", handleHashChange);
@@ -729,6 +780,64 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   useEffect(() => {
     if (!user?.id) return;
     const fetchDashboardData = async () => {
+      const isDemoUser = Boolean(
+        user?.id?.startsWith("demo-") ||
+        user?.email?.toLowerCase().includes("demo") ||
+        (user as any)?.isDemo
+      );
+
+      if (isDemoUser) {
+        const activityDates: { date: string; activityCount: number }[] = [];
+        const now = new Date();
+        for (let i = 13; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          activityDates.push({
+            date: d.toISOString().slice(0, 10),
+            activityCount: (i % 3) + 2,
+          });
+        }
+
+        setApiData({
+          courseProgress: {
+            progressPercentage: 75,
+            completedModules: 3,
+            totalModules: 21,
+            completedModuleIds: [1, 2, 3],
+            unlockedModuleIds: [1, 2, 3, 4],
+          },
+          averageScore: 88,
+          totalScore: 1850,
+          totalStudyMinutes: 2310,
+          percentile: 8,
+          rank: 3,
+          currentStreak: 14,
+          modulePerformance: [
+            { moduleId: 1, moduleTitle: "M1: Web Evolution", averageScore: 92 },
+            { moduleId: 2, moduleTitle: "M2: Blockchain Architecture", averageScore: 86 },
+            { moduleId: 3, moduleTitle: "M3: Cryptography & Hashing", averageScore: 88 },
+            { moduleId: 4, moduleTitle: "M4: Digital Signatures", averageScore: 85 },
+          ],
+          activityDates,
+        });
+
+        setCertEligibility({
+          completedSubmodules: 18,
+          totalSubmodules: 123,
+          isCertificateEligible: false,
+          remainingSubmodules: 105,
+        });
+
+        setLeaderboardRank(3);
+        setPaymentProfile({
+          isPaymentVerified: false,
+          hasTransactionId: false,
+        });
+        setAllocationStatus(null);
+        setLoadingCert(false);
+        return;
+      }
+
       try {
         const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
         const res = await fetch(`${baseURL}/api/me/discount`, {
@@ -1426,7 +1535,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                         </h1>
                         <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
                           You are ahead of{" "}
-                          <strong className="text-[var(--text)]">{analytics.percentile}%</strong> of
+                          <strong className="text-[var(--text)]">{100 - analytics.percentile}%</strong> of
                           learners this week. Keep pushing - your next milestone is close.
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
@@ -1435,7 +1544,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                             {analytics.streakDays}d streak
                           </span>
                           <span className="flex items-center rounded-full border border-purple-500/40 bg-purple-500/10 px-3.5 py-1.5 text-xs font-bold text-purple-400 shadow-sm backdrop-blur-sm transition hover:bg-purple-500/20">
-                            Phase: {analytics.currentPhaseTitle.slice(0, 28)}
+                            Phase {currentPhaseIndex}: {currentPhaseIndex === 1 ? "Foundation" : currentPhaseIndex === 2 ? "Tooling" : currentPhaseIndex === 3 ? "Build" : "Launch"}
                           </span>
                           <span className="flex items-center rounded-full border border-blue-500/40 bg-blue-500/10 px-3.5 py-1.5 text-xs font-bold text-blue-400 shadow-sm backdrop-blur-sm transition hover:bg-blue-500/20">
                             Rank #{leaderboardRank ?? analytics.rank}
@@ -2132,75 +2241,203 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
               </button>
             </div>
 
-            <div className="mb-4 flex flex-col md:flex-row items-stretch justify-center gap-6 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] p-5 shrink-0 text-left">
-              <div className="flex flex-col items-center justify-between gap-2 text-center shrink-0 w-full md:max-w-[200px]">
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-xs font-bold text-[var(--text)]">Scan to Pay</p>
-                  <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white p-2 shadow-sm">
-                    <img
-                      src="/MasterstrokePaymentQRCode.jpg"
-                      alt="Payment QR Code"
-                      className="h-[140px] w-[140px] object-contain"
-                    />
+            <div className="mb-4 space-y-3.5 shrink-0 text-left">
+              {/* Bank Details Card */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-sm text-left">
+                <div className="flex items-center gap-3.5 mb-5">
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
+                    style={{ backgroundColor: '#eaf2ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+                  >
+                    <Landmark className="h-6 w-6" strokeWidth={2.3} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-extrabold text-[var(--text)] tracking-tight">
+                      Bank Details
+                    </h4>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      Transfer the amount to the below account details
+                    </p>
                   </div>
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] leading-normal mt-1">
-                  Already paid? Fill in the transaction details below so we can verify it.
-                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-1">
+                  {/* Field 1: ACCOUNT NAME */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <User className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NAME
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm tracking-wide">
+                      SMART ANGELOS FOUNDATION
+                    </p>
+                  </div>
+
+                  {/* Field 2: ACCOUNT NUMBER */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NUMBER
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        100211590045
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("100211590045", "acc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy Account Number"
+                      >
+                        {copiedBankKey === "acc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Field 3: IFSC CODE */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <QrCode className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        IFSC CODE
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        INDB0001375
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("INDB0001375", "ifsc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy IFSC Code"
+                      >
+                        {copiedBankKey === "ifsc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Field 4: BANK & BRANCH */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        BANK & BRANCH
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm leading-snug">
+                      MUKUNDNAGAR SWARGET PUNE BRANCH
+                    </p>
+                  </div>
+                </div>
               </div>
 
+              {/* Plan Summary Card - Reduced Size */}
               {(() => {
                 const roleStr = (liveRole || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
                 let pricing = null;
                 if (roleStr === "courseonly" || roleStr === "ojt") {
                   pricing = { name: "OJT", base: 4999 };
                 } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
-                  pricing = { name: "Working Professional - Web3 Enthusiast", base: 24999 };
+                  pricing = { name: "Working Professional", base: 24999 };
                 } else if (roleStr === "validator") {
                   pricing = { name: "Validator", base: 9999 };
-                } else if (roleStr === "student") {
+                } else {
                   pricing = { name: "Student", base: 19999 };
                 }
-
-                if (!pricing) return null;
 
                 const base = pricing.base;
                 const discountPercent = userDiscount || 0;
                 const discountAmount = (base * discountPercent) / 100;
-                const discountedBase = base - discountAmount;
-                const gst = discountedBase * 0.18;
-                const total = discountedBase * 1.18;
+                const totalPayable = base - discountAmount;
 
                 return (
-                  <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                        Plan: {pricing.name}
-                      </h4>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">Role Amount:</span>
-                          <span className="font-bold text-[var(--text)]">₹{base.toLocaleString('en-IN')}</span>
-                        </div>
-                        {discountPercent > 0 && (
-                          <div className="flex justify-between border-b border-[var(--border)] pb-1.5 text-green-600">
-                            <span>Discount ({discountPercent}%):</span>
-                            <span className="font-bold">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">18% GST:</span>
-                          <span className="font-bold text-[var(--text)]">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm text-left">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border shadow-sm"
+                        style={{ backgroundColor: '#e6fbf7', color: '#0d9488', borderColor: '#99f6e4' }}
+                      >
+                        <FileText className="h-5 w-5" strokeWidth={2.3} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-[var(--text)] tracking-tight">
+                          Plan Summary
+                        </h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          Details of the selected program
+                        </p>
                       </div>
                     </div>
-                    <div className="flex justify-between items-baseline pt-3 mt-4 border-t border-[var(--border)]">
-                      <span className="font-black text-xs text-[var(--text)]">Total (Incl. GST):</span>
-                      <span className="font-black text-mst-red text-base whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 md:gap-5">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            PLAN
+                          </span>
+                          <span className="font-black text-xs sm:text-sm text-mst-red uppercase whitespace-nowrap">
+                            {pricing.name}
+                          </span>
+                        </div>
+
+                        <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            ROLE AMOUNT
+                          </span>
+                          <span className="font-extrabold text-xs sm:text-sm text-[var(--text)] whitespace-nowrap">
+                            ₹{base.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        {discountPercent > 0 && (
+                          <>
+                            <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block mb-0.5">
+                                DISCOUNT ({discountPercent}%)
+                              </span>
+                              <span className="font-extrabold text-xs sm:text-sm text-emerald-600 whitespace-nowrap">
+                                -₹{discountAmount.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div
+                        className="w-full sm:w-auto shrink-0 rounded-xl border px-3.5 py-1.5 text-left sm:text-right"
+                        style={{ backgroundColor: '#fff1f2', borderColor: '#fecdd3' }}
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-rose-500 block">
+                          TOTAL AMOUNT
+                        </span>
+                        <span className="text-base sm:text-lg font-black text-mst-red tracking-tight block whitespace-nowrap">
+                          ₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
+
+              <p className="text-center text-xs text-[var(--text-muted)] pt-1">
+                Already paid? Fill in the transaction details below so we can verify it.
+              </p>
             </div>
 
             <form onSubmit={handleAllocationSubmit} className="space-y-3">
