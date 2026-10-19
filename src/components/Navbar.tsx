@@ -47,11 +47,11 @@ export function Navbar() {
     <header className="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--nav-bg)] backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2 sm:px-6">
         {/* Logo */}
-        <Link href="/" className="flex items-center group relative z-10 h-16 overflow-hidden shrink-0 max-w-[95px] min-[380px]:max-w-[120px] sm:max-w-none">
+        <Link href="/" className="flex items-center group relative z-10 h-16 overflow-hidden shrink-0 max-w-[115px] min-[380px]:max-w-[140px] sm:max-w-none">
           <img
             src="/Acadmy Logo.webp"
             alt="Masterstroke Academy"
-            className="h-28 sm:h-44 w-auto -my-6 transition-transform group-hover:scale-105 object-contain object-left"
+            className="h-32 min-[380px]:h-36 sm:h-44 w-auto -my-6 transition-transform group-hover:scale-105 object-contain object-left"
           />
         </Link>
 
@@ -59,28 +59,28 @@ export function Navbar() {
         <nav className="hidden items-center gap-1 lg:flex">
           <Link
             href="/academy-overview"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <GraduationCap size={16} />
             Curriculum
           </Link>
           <Link
             href="/leaderboard"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <Trophy size={16} />
             Leaderboard
           </Link>
           <Link
             href="/learn"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <BookOpen size={16} />
             Learning Tree
           </Link>
           <Link
             href="/blogs"
-            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+            className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
           >
             <Newspaper size={16} />
             Blogs
@@ -88,7 +88,7 @@ export function Navbar() {
           {showUserNav && (
             <Link
               href={dashboardHref}
-              className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
+              className="flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-[var(--nav-text)]/70 transition hover:bg-white/10 hover:text-[var(--nav-text)]"
             >
               <LayoutDashboard size={16} />
               Dashboard
@@ -98,7 +98,7 @@ export function Navbar() {
 
         {/* Right side */}
         <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          <ThemeToggle className="p-1 sm:p-2" />
+          <ThemeToggle />
 
           {showUserNav ? (
             <div className="flex items-center gap-1 sm:gap-2">
@@ -111,9 +111,13 @@ export function Navbar() {
                 }}
                 className="flex items-center gap-1.5 rounded-lg border border-transparent sm:border-white/10 p-0.5 sm:px-3.5 sm:py-2 text-xs font-medium text-[var(--nav-text)] transition hover:border-mst-red/50 hover:bg-mst-red/10 sm:text-sm"
               >
-                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-mst-red text-[10px] font-bold text-white">
-                  {user.fullName?.charAt(0).toUpperCase()}
-                </div>
+                {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+                  <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-6 w-6 rounded-full object-cover shrink-0" />
+                ) : (
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-mst-red text-[10px] font-bold text-white shrink-0">
+                    {user.fullName?.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="hidden max-w-[100px] truncate sm:inline">{user.fullName?.split(" ")[0]}</span>
               </Link>
               <button
@@ -240,9 +244,13 @@ export function Navbar() {
                   }}
                   className="flex items-center gap-3 px-4 py-3 hover:bg-white/10 rounded-xl transition"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mst-red text-xs font-bold text-white">
-                    {user.fullName?.charAt(0).toUpperCase()}
-                  </div>
+                  {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+                    <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-8 w-8 rounded-full object-cover shrink-0" />
+                  ) : (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-mst-red text-xs font-bold text-white shrink-0">
+                      {user.fullName?.charAt(0).toUpperCase()}
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-[var(--nav-text)]">{user.fullName}</p>
                     <p className="text-xs text-[var(--nav-text)]/50">{user.email}</p>

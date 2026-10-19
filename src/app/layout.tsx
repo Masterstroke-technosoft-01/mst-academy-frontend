@@ -66,7 +66,7 @@ export const metadata: Metadata = {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'Masterstroke Academy — online blockchain course in India',
+        alt: 'Masterstroke Academy - online blockchain course in India',
       },
     ],
   },
@@ -100,7 +100,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${jetbrains.variable} h-full`} suppressHydrationWarning data-scroll-behavior="smooth">
+    <html lang="en" className={`${inter.variable} ${jetbrains.variable} h-full overflow-x-hidden`} suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link rel="icon" href="/1.png" type="image/png" />
         <link rel="manifest" href="/manifest.json" />
@@ -117,7 +117,9 @@ export default function RootLayout({
             gtag('config', 'G-0BTDN5EMY4');
           `}
         </Script>
-        <script
+        <Script
+          id="service-worker-registration"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator && (window.location.protocol === 'https:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -130,7 +132,9 @@ export default function RootLayout({
             `,
           }}
         />
-        <script
+        <Script
+          id="content-protection"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               document.addEventListener('copy', function(e) {
@@ -159,8 +163,10 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col antialiased max-w-full overflow-x-hidden">
-        <script
+        <Script
+          id="org-schema"
           type="application/ld+json"
+          strategy="afterInteractive"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(orgSchema) }}
         />
         <ThemeProvider>

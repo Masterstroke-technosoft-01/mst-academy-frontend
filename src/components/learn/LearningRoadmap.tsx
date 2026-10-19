@@ -21,7 +21,7 @@ import type { Curriculum, ModuleMeta, SubmoduleMeta } from "@/lib/types";
 import type { ModuleStatus } from "@/lib/progress";
 import { useTheme } from "@/components/ThemeProvider";
 import { useRoadmapStore } from "@/components/learn/roadmap/roadmapStore";
-import { getCardSubmoduleTitle } from "@/lib/display-titles";
+import { getCardModuleTitle, getCardSubmoduleTitle } from "@/lib/display-titles";
 import { getModule, getSubmodule, registerSubmoduleMetadata, registerModuleIdMapping } from "@/lib/curriculum";
 import {
   getModuleProgressPercent,
@@ -45,6 +45,15 @@ import {
   Trophy,
   Zap,
   Monitor,
+  Building2,
+  Check,
+  Copy,
+  Landmark,
+  User,
+  CreditCard,
+  QrCode,
+  MapPin,
+  FileText,
 } from "lucide-react";
 import { playExpand, playNavigate, playSelect } from "@/lib/sounds";
 import { ModuleVideoModal } from "./ModuleVideoModal";
@@ -126,7 +135,7 @@ const PhaseCardNode = memo(function PhaseCardNode({
       <Handle type="source" position={Position.Left} id="left-source" className="opacity-0" />
       <Handle type="target" position={Position.Right} id="right-target" className="opacity-0" />
       <div
-        className={`group relative flex flex-col justify-between h-[180px] w-[min(100vw-3rem,420px)] max-w-[420px] sm:w-[360px] md:w-[420px] rounded-3xl border border-[var(--border)] bg-[var(--surface)]/70 backdrop-blur-md p-5 sm:p-6 shadow-lg`}
+        className={`group relative flex flex-col justify-between min-h-[160px] sm:min-h-[180px] w-[min(calc(100vw-2.5rem),420px)] max-w-[420px] sm:w-[360px] md:w-[420px] rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--surface)]/70 backdrop-blur-md p-4 sm:p-6 shadow-lg`}
         style={{
           boxShadow: active
             ? `0 18px 60px ${color}33`
@@ -137,29 +146,29 @@ const PhaseCardNode = memo(function PhaseCardNode({
         }}
       >
         <div
-          className={`absolute inset-0 -z-10 rounded-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 ${active ? "opacity-100" : ""
+          className={`absolute inset-0 -z-10 rounded-2xl sm:rounded-3xl opacity-0 transition-opacity duration-500 group-hover:opacity-100 ${active ? "opacity-100" : ""
             }`}
           style={{
             background: `linear-gradient(135deg, ${color}33, transparent 55%), radial-gradient(ellipse at 30% 30%, ${color}22, transparent 60%)`,
           }}
         />
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
+        <div className="flex items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-start gap-2.5 sm:gap-3">
               <span
-                className="inline-flex h-10 w-10 items-center justify-center rounded-2xl"
+                className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl mt-0.5"
                 style={{
                   background: `linear-gradient(135deg, ${color}26, transparent 60%)`,
                   border: `1px solid ${tint(color, "50")}`,
                 }}
               >
-                <Icon className="h-5 w-5" style={{ color }} />
+                <Icon className="h-4 w-4 sm:h-5 sm:w-5" style={{ color }} />
               </span>
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
                   Phase {data.phaseId.split("-")[1]} • {phaseStyle?.label ?? "Phase"}
                 </p>
-                <h3 className="text-lg font-extrabold text-[var(--text)] line-clamp-2">{title}</h3>
+                <h3 className="mt-0.5 text-sm sm:text-lg font-extrabold text-[var(--text)] line-clamp-2 leading-snug">{title}</h3>
               </div>
             </div>
 
@@ -199,7 +208,7 @@ const PhaseCardNode = memo(function PhaseCardNode({
 
 const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNodeVisual }) {
   const { module, status, progress, locked, active, dimmed, color, onPlayVideo } = data;
-  const title = module.title;
+  const title = getCardModuleTitle(module.title);
   const subCount = module.submodules.length;
   const hasVideo = Boolean(module.videoUrl) && !locked;
 
@@ -234,7 +243,7 @@ const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNode
       <Handle type="target" position={Position.Left} id="left-target" className="opacity-0" />
       <Handle type="source" position={Position.Right} id="right-source" className="opacity-0" />
       <div
-        className={`w-[min(100vw-3rem,480px)] max-w-[480px] min-h-[175px] flex flex-col justify-between rounded-3xl border bg-[var(--surface)]/80 backdrop-blur-md p-6 shadow-md transition-all duration-300 ${active
+        className={`w-[min(calc(100vw-2.5rem),480px)] max-w-[480px] min-h-[160px] sm:min-h-[175px] flex flex-col justify-between rounded-2xl sm:rounded-3xl border bg-[var(--surface)]/80 backdrop-blur-md p-4 sm:p-6 shadow-md transition-all duration-300 ${active
           ? "border-[var(--border-strong)]"
           : locked
             ? "border-[var(--border)] opacity-80"
@@ -246,21 +255,21 @@ const ModuleCardNode = memo(function ModuleCardNode({ data }: { data: ModuleNode
         }}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="flex min-w-0 items-start gap-3">
+          <div className="flex min-w-0 items-start gap-2.5 sm:gap-3 flex-1">
             <span
-              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl mt-0.5"
+              className="inline-flex h-9 w-9 sm:h-10 sm:w-10 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl mt-0.5"
               style={{
                 background: `linear-gradient(135deg, ${color}22, transparent 60%)`,
                 border: `1px solid ${tint(color, "55")}`,
               }}
             >
-              <BookOpen className="h-5 w-5" style={{ color }} />
+              <BookOpen className="h-4 w-4 sm:h-5 sm:w-5" style={{ color }} />
             </span>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
                 Module {module.index}
               </p>
-              <h4 className="mt-1 line-clamp-2 text-lg font-extrabold text-[var(--text)]">
+              <h4 className="mt-0.5 line-clamp-2 text-sm sm:text-lg font-extrabold text-[var(--text)] leading-snug">
                 {title}
               </h4>
             </div>
@@ -354,7 +363,7 @@ const SubmoduleChipNode = memo(function SubmoduleChipNode({
       <Handle type="target" position={Position.Left} id="left-target" className="opacity-0" />
       <Handle type="source" position={Position.Right} id="right-source" className="opacity-0" />
       <div
-        className={`w-[min(100vw-3rem,400px)] max-w-[400px] rounded-2xl border bg-[var(--surface)]/80 backdrop-blur-md p-5 shadow-sm transition-all duration-300 ${active
+        className={`w-[min(calc(100vw-2.5rem),400px)] max-w-[400px] rounded-2xl border bg-[var(--surface)]/80 backdrop-blur-md p-3.5 sm:p-5 shadow-sm transition-all duration-300 ${active
           ? "border-[var(--border-strong)] shadow-xl"
           : locked
             ? "opacity-70"
@@ -366,11 +375,11 @@ const SubmoduleChipNode = memo(function SubmoduleChipNode({
         }}
       >
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)]">
               {module.index || 1}.{index + 1}
             </p>
-            <p className="mt-1 line-clamp-2 text-base font-bold text-[var(--text)]">{title}</p>
+            <p className="mt-0.5 line-clamp-2 text-xs sm:text-base font-bold text-[var(--text)] leading-snug">{title}</p>
           </div>
           <div className="shrink-0">
             {locked ? (
@@ -464,46 +473,67 @@ function Breadcrumb({
   onBackModule: () => void;
   onResetAll: () => void;
 }) {
+  const formattedModuleTitle = moduleTitle ? getCardModuleTitle(moduleTitle) : undefined;
+  const formattedSubTitle = subTitle ? getCardSubmoduleTitle(subTitle) : undefined;
+
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[var(--border)] bg-[var(--surface)]/85 backdrop-blur-md px-4 py-3 shadow-sm">
-      <button
-        type="button"
-        onClick={onResetAll}
-        className="text-xs font-bold text-mst-red hover:underline"
-      >
-        Home
-      </button>
-      {phaseTitle && (
-        <>
-          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-          <button
-            type="button"
-            onClick={onBackPhase}
-            className="text-xs font-bold text-[var(--text-muted)] hover:text-mst-red hover:underline"
-          >
-            {phaseTitle}
-          </button>
-        </>
-      )}
-      {moduleTitle && (
-        <>
-          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-          <button
-            type="button"
-            onClick={onBackModule}
-            className="text-xs font-bold text-[var(--text-muted)] hover:text-mst-red hover:underline"
-          >
-            {moduleTitle}
-          </button>
-        </>
-      )}
-      {subTitle && (
-        <>
-          <ChevronRight className="h-4 w-4 text-[var(--text-muted)]" />
-          <span className="text-xs font-bold text-[var(--text)]">{subTitle}</span>
-        </>
-      )}
-    </div>
+    <nav
+      aria-label="Breadcrumb"
+      className="w-full max-w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)]/90 backdrop-blur-md p-3 sm:px-4 sm:py-3 shadow-sm"
+    >
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs font-semibold leading-relaxed">
+        <button
+          type="button"
+          onClick={onResetAll}
+          className="inline-flex items-center text-mst-red hover:underline transition-colors shrink-0 font-bold cursor-pointer"
+        >
+          Home
+        </button>
+
+        {phaseTitle && (
+          <div className="inline-flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+            <button
+              type="button"
+              onClick={onBackPhase}
+              className={`transition-colors hover:text-mst-red hover:underline text-left cursor-pointer ${
+                moduleTitle || subTitle
+                  ? "text-[var(--text-muted)] font-medium"
+                  : "text-[var(--text)] font-bold"
+              }`}
+            >
+              {phaseTitle}
+            </button>
+          </div>
+        )}
+
+        {formattedModuleTitle && (
+          <div className="inline-flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+            <button
+              type="button"
+              onClick={onBackModule}
+              className={`transition-colors hover:text-mst-red hover:underline text-left cursor-pointer ${
+                subTitle
+                  ? "text-[var(--text-muted)] font-medium"
+                  : "text-[var(--text)] font-bold"
+              }`}
+            >
+              {formattedModuleTitle}
+            </button>
+          </div>
+        )}
+
+        {formattedSubTitle && (
+          <div className="inline-flex items-center gap-1.5 min-w-0">
+            <ChevronRight className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)]" />
+            <span className="text-[var(--text)] font-bold text-left">
+              {formattedSubTitle}
+            </span>
+          </div>
+        )}
+      </div>
+    </nav>
   );
 }
 
@@ -692,6 +722,13 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
   const [screenshotFileName, setScreenshotFileName] = useState("");
   const [allocationErrors, setAllocationErrors] = useState<Record<string, string>>({});
   const [isSubmittingAllocation, setIsSubmittingAllocation] = useState(false);
+  const [copiedBankKey, setCopiedBankKey] = useState<string | null>(null);
+
+  const handleCopyBank = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBankKey(key);
+    setTimeout(() => setCopiedBankKey(null), 2000);
+  };
   const [paymentToast, setPaymentToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const showPaymentToast = (message: string, type: "success" | "error" = "success") => {
@@ -754,6 +791,16 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
     });
   };
 
+  const handleAllocationFieldChange = (field: keyof typeof allocationForm, value: string) => {
+    setAllocationForm((prev) => ({ ...prev, [field]: value }));
+    setAllocationErrors((prev) => {
+      if (!prev[field]) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
   const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -762,6 +809,12 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
         e.target.value = "";
         return;
       }
+      setAllocationErrors((prev) => {
+        if (!prev.paymentScreenshotUrl) return prev;
+        const newErrors = { ...prev };
+        delete newErrors.paymentScreenshotUrl;
+        return newErrors;
+      });
       const reader = new FileReader();
       reader.onloadend = async () => {
         const rawBase64 = reader.result as string;
@@ -2083,75 +2136,203 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
               </button>
             </div>
 
-            <div className="mb-4 flex flex-col md:flex-row items-stretch justify-center gap-6 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] p-5 shrink-0 text-left">
-              <div className="flex flex-col items-center justify-between gap-2 text-center shrink-0 w-full md:max-w-[200px]">
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-xs font-bold text-[var(--text)]">Scan to Pay</p>
-                  <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white p-2 shadow-sm">
-                    <img
-                      src="/MasterstrokePaymentQRCode.jpg"
-                      alt="Payment QR Code"
-                      className="h-[140px] w-[140px] object-contain"
-                    />
+            <div className="mb-4 space-y-3.5 shrink-0 text-left">
+              {/* Bank Details Card */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-sm text-left">
+                <div className="flex items-center gap-3.5 mb-5">
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
+                    style={{ backgroundColor: '#eaf2ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+                  >
+                    <Landmark className="h-6 w-6" strokeWidth={2.3} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-extrabold text-[var(--text)] tracking-tight">
+                      Bank Details
+                    </h4>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      Transfer the amount to the below account details
+                    </p>
                   </div>
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] leading-normal mt-1">
-                  Already paid? Fill in the transaction details below so we can verify it.
-                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-1">
+                  {/* Field 1: ACCOUNT NAME */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <User className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NAME
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm tracking-wide">
+                      SMART ANGELOS FOUNDATION
+                    </p>
+                  </div>
+
+                  {/* Field 2: ACCOUNT NUMBER */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NUMBER
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        100211590045
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("100211590045", "acc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy Account Number"
+                      >
+                        {copiedBankKey === "acc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Field 3: IFSC CODE */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <QrCode className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        IFSC CODE
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        INDB0001375
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("INDB0001375", "ifsc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy IFSC Code"
+                      >
+                        {copiedBankKey === "ifsc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Field 4: BANK & BRANCH */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        BANK & BRANCH
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm leading-snug">
+                      MUKUNDNAGAR SWARGET PUNE BRANCH
+                    </p>
+                  </div>
+                </div>
               </div>
 
+              {/* Plan Summary Card - Reduced Size */}
               {(() => {
                 const roleStr = (userProfile?.role || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
                 let pricing = null;
                 if (roleStr === "courseonly" || roleStr === "ojt") {
                   pricing = { name: "OJT", base: 4999 };
                 } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
-                  pricing = { name: "Working Professional - Web3 Enthusiast", base: 24999 };
+                  pricing = { name: "Working Professional", base: 24999 };
                 } else if (roleStr === "validator") {
                   pricing = { name: "Validator", base: 9999 };
-                } else if (roleStr === "student") {
+                } else {
                   pricing = { name: "Student", base: 19999 };
                 }
-
-                if (!pricing) return null;
 
                 const base = pricing.base;
                 const discountPercent = apiDiscount !== null ? apiDiscount : 0;
                 const discountAmount = (base * discountPercent) / 100;
-                const discountedBase = base - discountAmount;
-                const gst = discountedBase * 0.18;
-                const total = discountedBase * 1.18;
+                const totalPayable = base - discountAmount;
 
                 return (
-                  <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                        Plan: {pricing.name}
-                      </h4>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">Role Amount:</span>
-                          <span className="font-bold text-[var(--text)]">₹{base.toLocaleString('en-IN')}</span>
-                        </div>
-                        {discountPercent > 0 && (
-                          <div className="flex justify-between border-b border-[var(--border)] pb-1.5 text-green-600">
-                            <span>Discount ({discountPercent}%):</span>
-                            <span className="font-bold">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">18% GST:</span>
-                          <span className="font-bold text-[var(--text)]">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm text-left">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border shadow-sm"
+                        style={{ backgroundColor: '#e6fbf7', color: '#0d9488', borderColor: '#99f6e4' }}
+                      >
+                        <FileText className="h-5 w-5" strokeWidth={2.3} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-[var(--text)] tracking-tight">
+                          Plan Summary
+                        </h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          Details of the selected program
+                        </p>
                       </div>
                     </div>
-                    <div className="flex justify-between items-baseline pt-3 mt-4 border-t border-[var(--border)]">
-                      <span className="font-black text-xs text-[var(--text)]">Total (Incl. GST):</span>
-                      <span className="font-black text-mst-red text-base whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 md:gap-5">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            PLAN
+                          </span>
+                          <span className="font-black text-xs sm:text-sm text-mst-red uppercase whitespace-nowrap">
+                            {pricing.name}
+                          </span>
+                        </div>
+
+                        <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            ROLE AMOUNT
+                          </span>
+                          <span className="font-extrabold text-xs sm:text-sm text-[var(--text)] whitespace-nowrap">
+                            ₹{base.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        {discountPercent > 0 && (
+                          <>
+                            <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block mb-0.5">
+                                DISCOUNT ({discountPercent}%)
+                              </span>
+                              <span className="font-extrabold text-xs sm:text-sm text-emerald-600 whitespace-nowrap">
+                                -₹{discountAmount.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div
+                        className="w-full sm:w-auto shrink-0 rounded-xl border px-3.5 py-1.5 text-left sm:text-right"
+                        style={{ backgroundColor: '#fff1f2', borderColor: '#fecdd3' }}
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-rose-500 block">
+                          TOTAL AMOUNT
+                        </span>
+                        <span className="text-base sm:text-lg font-black text-mst-red tracking-tight block whitespace-nowrap">
+                          ₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
+
+              <p className="text-center text-xs text-[var(--text-muted)] pt-1">
+                Already paid? Fill in the transaction details below so we can verify it.
+              </p>
             </div>
 
             <form onSubmit={handleAllocationSubmit} className="space-y-3">
@@ -2163,7 +2344,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.accountHolderName}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, accountHolderName: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('accountHolderName', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.accountHolderName ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Enter account holder name"
                   />
@@ -2178,8 +2359,8 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   </label>
                   <select
                     value={allocationForm.category}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, category: e.target.value })}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]"
+                    onChange={(e) => handleAllocationFieldChange('category', e.target.value)}
+                    className={`w-full rounded-lg border ${allocationErrors.category ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]`}
                   >
                     <option value="">Select Category</option>
                     <option value="STUDENT">STUDENT</option>
@@ -2201,7 +2382,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="number"
                     value={allocationForm.amountPaid}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, amountPaid: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('amountPaid', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.amountPaid ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="2999"
                   />
@@ -2217,7 +2398,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="date"
                     value={allocationForm.paymentDate}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentDate: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('paymentDate', e.target.value)}
                     max={(() => {
                       const d = new Date();
                       const year = d.getFullYear();
@@ -2225,7 +2406,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                       const day = String(d.getDate()).padStart(2, '0');
                       return `${year}-${month}-${day}`;
                     })()}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
+                    className={`w-full rounded-lg border ${allocationErrors.paymentDate ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   />
                   {allocationErrors.paymentDate && (
                     <p className="mt-0.5 text-[10px] text-red-500">{allocationErrors.paymentDate}</p>
@@ -2241,7 +2422,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.transactionId}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, transactionId: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('transactionId', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.transactionId ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="UTR123456789"
                   />
@@ -2256,8 +2437,8 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   </label>
                   <select
                     value={allocationForm.paymentMethod}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentMethod: e.target.value })}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]"
+                    onChange={(e) => handleAllocationFieldChange('paymentMethod', e.target.value)}
+                    className={`w-full rounded-lg border ${allocationErrors.paymentMethod ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]`}
                   >
                     <option value="">Select Method</option>
                     <option value="UPI">UPI</option>
@@ -2279,7 +2460,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.addressLine1}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine1: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine1', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.addressLine1 ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="123 Main Road"
                   />
@@ -2295,7 +2476,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.addressLine2}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine2: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine2', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Near Central Mall"
                   />
@@ -2310,7 +2491,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.city}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, city: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('city', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.city ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai"
                   />
@@ -2326,7 +2507,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.district}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, district: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('district', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.district ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai Suburban"
                   />
@@ -2344,7 +2525,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.state}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, state: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('state', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.state ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Maharashtra"
                   />
@@ -2360,7 +2541,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.pincode}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, pincode: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('pincode', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.pincode ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="400001"
                   />
@@ -2377,7 +2558,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                 <input
                   type="text"
                   value={allocationForm.country}
-                  onChange={(e) => setAllocationForm({ ...allocationForm, country: e.target.value })}
+                  onChange={(e) => handleAllocationFieldChange('country', e.target.value)}
                   className={`w-full rounded-lg border ${allocationErrors.country ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   placeholder="India"
                 />
@@ -2391,14 +2572,14 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <label className="mb-1 block text-[11px] font-bold text-[var(--text)]">
                     Upload payment screenshot (Max 5MB) <span className="text-mst-red">*</span>
                   </label>
-                  <div className={`flex items-center gap-3 w-full rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
+                  <div className={`flex items-center gap-3 w-full min-w-0 rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
                     <label
                       htmlFor="learnScreenshotUploadInput"
                       className="cursor-pointer rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[10px] font-bold text-[var(--text)] hover:bg-[var(--border)] transition-all shrink-0 shadow-sm"
                     >
                       Choose File
                     </label>
-                    <span className="text-[10px] text-[var(--text-muted)] truncate">
+                    <span className="text-[10px] text-[var(--text-muted)] min-w-0 flex-1 truncate">
                       {screenshotFileName ? screenshotFileName : "No file chosen"}
                     </span>
                     <input
@@ -2421,7 +2602,7 @@ export function LearningRoadmap({ curriculum: initialCurriculum }: { curriculum:
                   <input
                     type="text"
                     value={allocationForm.additionalNotes}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, additionalNotes: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('additionalNotes', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Payment completed successfully"
                   />

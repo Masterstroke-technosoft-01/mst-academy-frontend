@@ -1,7 +1,6 @@
 "use client";
 
 import { useAuth } from "@/components/AuthProvider";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -58,6 +57,13 @@ import {
   Menu,
   X,
   Lock,
+  Building2,
+  Check,
+  Landmark,
+  CreditCard,
+  QrCode,
+  MapPin,
+  FileText,
 } from "lucide-react";
 import { StudentProfile } from "@/components/dashboard/StudentProfile";
 import { ReferAndEarnTab } from "@/components/dashboard/ReferAndEarnTab";
@@ -102,7 +108,7 @@ function GlassCard({
       style={glow ? { boxShadow: `0 0 40px ${glow}` } : undefined}
     >
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/10 via-transparent to-mst-red/10 opacity-30 transition-all duration-500 group-hover:scale-105 group-hover:opacity-100" />
-      <div className="relative z-10">{children}</div>
+      <div className="relative z-10 h-full">{children}</div>
     </div>
   );
 }
@@ -164,6 +170,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   const [isSubmittingAllocation, setIsSubmittingAllocation] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [showRegPopup, setShowRegPopup] = useState(false);
+  const [copiedBankKey, setCopiedBankKey] = useState<string | null>(null);
+
+  const handleCopyBank = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedBankKey(key);
+    setTimeout(() => setCopiedBankKey(null), 2000);
+  };
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -208,6 +221,16 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
     });
   };
 
+  const handleAllocationFieldChange = (field: keyof typeof allocationForm, value: string) => {
+    setAllocationForm((prev) => ({ ...prev, [field]: value }));
+    setAllocationErrors((prev) => {
+      if (!prev[field]) return prev;
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
+
   const handleScreenshotUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -216,6 +239,12 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
         e.target.value = "";
         return;
       }
+      setAllocationErrors((prev) => {
+        if (!prev.paymentScreenshotUrl) return prev;
+        const newErrors = { ...prev };
+        delete newErrors.paymentScreenshotUrl;
+        return newErrors;
+      });
       setPaymentScreenshotFile(file);
       const reader = new FileReader();
       reader.onloadend = async () => {
@@ -311,6 +340,34 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
     setAllocationErrors({});
     setIsSubmittingAllocation(true);
+
+    const isDemoUser = Boolean(
+      user?.id?.startsWith("demo-") ||
+      user?.email?.toLowerCase().includes("demo") ||
+      (user as any)?.isDemo
+    );
+
+    if (isDemoUser) {
+      showToast(
+        isResubmit ? "Payment resubmitted for review!" : "Course allocation request submitted successfully!",
+        "success"
+      );
+      setAllocationStatus({
+        id: "demo-purchase-001",
+        status: "PENDING",
+        rejectionNote: null,
+        accountHolderName: allocationForm.accountHolderName,
+        category: allocationForm.category,
+        amountPaid: Number(allocationForm.amountPaid),
+        paymentDate: allocationForm.paymentDate,
+        transactionId: allocationForm.transactionId,
+        paymentMethod: allocationForm.paymentMethod,
+        paymentScreenshotUrl: allocationForm.paymentScreenshotUrl,
+      });
+      setIsAllocationModalOpen(false);
+      setIsSubmittingAllocation(false);
+      return;
+    }
 
     try {
       const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
@@ -612,6 +669,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       if (hash === "#profile") return "profile";
       if (hash === "#refer") return "refer";
       if (hash === "#submissions") return "submissions";
+      if (hash === "#learning-tree" || hash === "#tree" || hash === "#learn") return "learning-tree";
     }
     return "overview";
   });
@@ -631,8 +689,16 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       else if (hash === "#profile") setActiveTab("profile");
       else if (hash === "#refer") setActiveTab("refer");
       else if (hash === "#submissions") setActiveTab("submissions");
+      else if (hash.includes("learn") || hash.includes("tree")) {
+        window.location.href = "/learn";
+      }
       else setActiveTab("overview");
     };
+
+    if (typeof window !== "undefined" && (window.location.hash.includes("learn") || window.location.hash.includes("tree"))) {
+      window.location.href = "/learn";
+      return;
+    }
 
     handleHashChange();
     window.addEventListener("hashchange", handleHashChange);
@@ -669,7 +735,6 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   }, [ready, user, router]);
 
   const [apiData, setApiData] = useState<any>(null);
-  const [dbModulesMap, setDbModulesMap] = useState<Record<string | number, string>>({});
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [leaderboardRank, setLeaderboardRank] = useState<number | null>(null);
   const [certEligibility, setCertEligibility] = useState<{
@@ -715,6 +780,64 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   useEffect(() => {
     if (!user?.id) return;
     const fetchDashboardData = async () => {
+      const isDemoUser = Boolean(
+        user?.id?.startsWith("demo-") ||
+        user?.email?.toLowerCase().includes("demo") ||
+        (user as any)?.isDemo
+      );
+
+      if (isDemoUser) {
+        const activityDates: { date: string; activityCount: number }[] = [];
+        const now = new Date();
+        for (let i = 13; i >= 0; i--) {
+          const d = new Date(now);
+          d.setDate(d.getDate() - i);
+          activityDates.push({
+            date: d.toISOString().slice(0, 10),
+            activityCount: (i % 3) + 2,
+          });
+        }
+
+        setApiData({
+          courseProgress: {
+            progressPercentage: 75,
+            completedModules: 3,
+            totalModules: 21,
+            completedModuleIds: [1, 2, 3],
+            unlockedModuleIds: [1, 2, 3, 4],
+          },
+          averageScore: 88,
+          totalScore: 1850,
+          totalStudyMinutes: 2310,
+          percentile: 8,
+          rank: 3,
+          currentStreak: 14,
+          modulePerformance: [
+            { moduleId: 1, moduleTitle: "M1: Web Evolution", averageScore: 92 },
+            { moduleId: 2, moduleTitle: "M2: Blockchain Architecture", averageScore: 86 },
+            { moduleId: 3, moduleTitle: "M3: Cryptography & Hashing", averageScore: 88 },
+            { moduleId: 4, moduleTitle: "M4: Digital Signatures", averageScore: 85 },
+          ],
+          activityDates,
+        });
+
+        setCertEligibility({
+          completedSubmodules: 18,
+          totalSubmodules: 123,
+          isCertificateEligible: false,
+          remainingSubmodules: 105,
+        });
+
+        setLeaderboardRank(3);
+        setPaymentProfile({
+          isPaymentVerified: false,
+          hasTransactionId: false,
+        });
+        setAllocationStatus(null);
+        setLoadingCert(false);
+        return;
+      }
+
       try {
         const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
         const res = await fetch(`${baseURL}/api/me/discount`, {
@@ -732,14 +855,8 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
       try {
         const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
-        const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") || localStorage.getItem("token") || localStorage.getItem("jwt") : null;
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
         const res = await fetch(`${baseURL}/api/dashboard/${user.id}`, {
           credentials: "include",
-          headers,
         });
         if (res.ok) {
           const data = await res.json();
@@ -751,14 +868,8 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
       try {
         const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
-        const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") || localStorage.getItem("token") || localStorage.getItem("jwt") : null;
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
         const res = await fetch(`${baseURL}/api/dashboard/certificate-eligibility`, {
           credentials: "include",
-          headers,
         });
         if (res.ok) {
           const data = await res.json();
@@ -847,7 +958,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
       try {
         const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
-        const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") || localStorage.getItem("token") || localStorage.getItem("jwt") : null;
+        const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") : null;
         const headers: Record<string, string> = {};
         if (token) {
           headers["Authorization"] = `Bearer ${token}`;
@@ -859,106 +970,38 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
         });
         if (res.ok) {
           const raw = await res.json();
-          const valid = Array.isArray(raw) ? raw.filter((e: any) => e && (e._id != null || e.id != null) && e.name != null) : [];
-          
-          const currentUserId = user.id || (user as any)._id;
-          const userEmail = user.email?.toLowerCase();
-
-          // Direct match for current user from DB leaderboard
-          const currentUserEntry = valid.find((e: any) => {
-            const entryId = e._id || e.id;
-            return (entryId && entryId === currentUserId) || (e.email && userEmail && e.email.toLowerCase() === userEmail);
+          const valid = raw.filter((e: any) => e._id != null && e.name != null);
+          const mapped = valid.map((e: any) => {
+            const isCurrentUser = e._id === user.id || e._id === (user as any)._id || (e.email && e.email === user.email);
+            const scoreVal = e.progressPercentage ?? e.score ?? 0;
+            const totalMods = e.totalModules ?? 21;
+            const modulesDoneVal = e.modulesDone ?? Math.round((scoreVal / 100) * totalMods);
+            return {
+              id: e._id ?? "",
+              name: e.name ?? "Unknown",
+              score: scoreVal,
+              modulesDone: modulesDoneVal,
+              totalModules: totalMods,
+              streak: e.currentStreak ?? e.streak ?? 0,
+              coins: e.coins ?? 0,
+              rank: e.rank,
+              isYou: !!isCurrentUser,
+            };
           });
 
-          if (currentUserEntry && currentUserEntry.rank != null && Number(currentUserEntry.rank) > 0) {
-            setLeaderboardRank(Number(currentUserEntry.rank));
-          } else {
-            const mapped = valid.map((e: any) => {
-              const entryId = e._id || e.id;
-              const isCurrentUser = (entryId && entryId === currentUserId) || (e.email && userEmail && e.email.toLowerCase() === userEmail);
-              const scoreVal = e.progressPercentage ?? e.score ?? 0;
-              const totalMods = e.totalModules ?? 21;
-              const modulesDoneVal = e.modulesDone ?? Math.round((scoreVal / 100) * totalMods);
-              return {
-                id: entryId ?? "",
-                name: e.name ?? "Unknown",
-                score: scoreVal,
-                modulesDone: modulesDoneVal,
-                totalModules: totalMods,
-                streak: e.currentStreak ?? e.streak ?? 0,
-                coins: e.coins ?? 0,
-                rank: e.rank != null && Number(e.rank) > 0 ? Number(e.rank) : undefined,
-                isYou: !!isCurrentUser,
-              };
-            });
+          mapped.sort((a: any, b: any) => {
+            if (b.score !== a.score) return b.score - a.score;
+            if (b.modulesDone !== a.modulesDone) return b.modulesDone - a.modulesDone;
+            return (a.rank ?? 999) - (b.rank ?? 999);
+          });
 
-            mapped.sort((a: any, b: any) => {
-              if (a.rank != null && b.rank != null) return a.rank - b.rank;
-              if (b.score !== a.score) return b.score - a.score;
-              if (b.modulesDone !== a.modulesDone) return b.modulesDone - a.modulesDone;
-              return (a.rank ?? 999) - (b.rank ?? 999);
-            });
-
-            const userIdx = mapped.findIndex((e: any) => e.isYou);
-            if (userIdx !== -1) {
-              setLeaderboardRank(mapped[userIdx].rank ?? (userIdx + 1));
-            }
+          const userIdx = mapped.findIndex((e: any) => e.isYou);
+          if (userIdx !== -1) {
+            setLeaderboardRank(userIdx + 1);
           }
         }
       } catch (error) {
         console.error("Failed to fetch leaderboard for rank:", error);
-      }
-
-      try {
-        const baseURL = process.env.NEXT_PUBLIC_BASE_URL || "";
-        const courseId = "6a2934912b48a13769669f8e";
-        const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") || localStorage.getItem("token") || localStorage.getItem("jwt") : null;
-        const headers: Record<string, string> = {};
-        if (token) {
-          headers["Authorization"] = `Bearer ${token}`;
-        }
-        const phasesRes = await fetch(`${baseURL}/api/phases/course/${courseId}`, {
-          credentials: "include",
-          headers,
-        });
-        if (phasesRes.ok) {
-          const phasesData = await phasesRes.json();
-          const rawPhases = phasesData.data || phasesData || [];
-          const mapping: Record<string | number, string> = {};
-          await Promise.all(
-            rawPhases.map(async (phase: any) => {
-              try {
-                const fullRes = await fetch(`${baseURL}/api/phases/full/${phase._id || phase.id}`, {
-                  credentials: "include",
-                  headers,
-                });
-                if (fullRes.ok) {
-                  const fullData = await fullRes.json();
-                  const fullPhaseObj = fullData.data || fullData;
-                  const rawModules = fullPhaseObj.modules || [];
-                  rawModules.forEach((m: any) => {
-                    const rawTitle = (m.title || "").trim();
-                    if (rawTitle) {
-                      if (m.index !== undefined && m.index !== null) {
-                        mapping[Number(m.index)] = rawTitle;
-                        mapping[String(m.index)] = rawTitle;
-                      }
-                      if (m._id) mapping[String(m._id)] = rawTitle;
-                      if (m.id) mapping[String(m.id)] = rawTitle;
-                    }
-                  });
-                }
-              } catch (e) {
-                console.error("Failed to fetch full phase:", e);
-              }
-            })
-          );
-          if (Object.keys(mapping).length > 0) {
-            setDbModulesMap(mapping);
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch database module titles:", error);
       }
     };
     fetchDashboardData();
@@ -969,14 +1012,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
     const local = computeStudentAnalytics(curriculum);
     if (apiData) {
       if (apiData.courseProgress) {
-        const rawProgress = apiData.courseProgress.progressPercentage !== undefined && apiData.courseProgress.progressPercentage !== null
-          ? Number(apiData.courseProgress.progressPercentage)
-          : (apiData.progressPercentage !== undefined && apiData.progressPercentage !== null
-              ? Number(apiData.progressPercentage)
-              : (certEligibility?.totalSubmodules && certEligibility.totalSubmodules > 0
-                  ? (certEligibility.completedSubmodules / certEligibility.totalSubmodules) * 100
-                  : local.overallProgress));
-        local.overallProgress = rawProgress % 1 === 0 ? rawProgress : Math.round(rawProgress * 100) / 100;
+        local.overallProgress = Math.round(apiData.courseProgress.progressPercentage || 0);
         local.modulesCompleted = apiData.courseProgress.completedModules || 0;
         local.totalModules = apiData.courseProgress.totalModules || local.totalModules;
 
@@ -1028,92 +1064,6 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
         });
 
         local.phaseJourney = updatedPhaseJourney;
-
-        // Determine the actual active phase based on curriculum progress
-        const backendPhaseId = apiData.courseProgress?.currentPhaseId || apiData.courseProgress?.activePhaseId || apiData.currentPhaseId || apiData.activePhase;
-        
-        let activePhaseEntry = backendPhaseId
-          ? updatedPhaseJourney.find(p => p.phaseId === backendPhaseId)
-          : undefined;
-
-        if (!activePhaseEntry) {
-          // The active phase is the first phase marked active and not yet 100% completed
-          activePhaseEntry = updatedPhaseJourney.find(p => p.status === "active" && p.percent < 100);
-        }
-        if (!activePhaseEntry) {
-          // If no active with <100%, find the first incomplete phase
-          activePhaseEntry = updatedPhaseJourney.find(p => p.percent < 100);
-        }
-        if (!activePhaseEntry && updatedPhaseJourney.length > 0) {
-          // If all phases are 100% complete, point to the final phase
-          activePhaseEntry = updatedPhaseJourney[updatedPhaseJourney.length - 1];
-        }
-
-        if (activePhaseEntry) {
-          local.currentPhaseId = activePhaseEntry.phaseId;
-          const matchingPhase = curriculum.phases.find(ph => ph.id === activePhaseEntry.phaseId);
-          if (matchingPhase) {
-            local.currentPhaseTitle = matchingPhase.title;
-          }
-        }
-
-        // Also identify active module from backend or curriculum
-        const backendActiveModId = 
-          apiData.courseProgress?.activeModuleId ??
-          apiData.courseProgress?.currentModuleId ??
-          apiData.activeModuleId ??
-          apiData.currentModuleId;
-
-        const activeMod = (backendActiveModId != null
-          ? curriculum.modules.find(m => m.id === Number(backendActiveModId) || String(m.id) === String(backendActiveModId))
-          : undefined) || curriculum.modules.find(m => {
-          if (completedModuleIds.length > 0) {
-            return !completedModuleIds.includes(m.id);
-          }
-          return true;
-        });
-
-        if (activeMod) {
-          local.activeModuleId = activeMod.id;
-
-          const targetModId = activeMod.id;
-          const directApiTitle = 
-            apiData.activeModuleTitle ||
-            apiData.currentModuleTitle ||
-            apiData.activeModuleName ||
-            apiData.currentModuleName ||
-            (typeof apiData.currentModule === "string" ? apiData.currentModule : apiData.currentModule?.title) ||
-            (typeof apiData.activeModule === "string" ? apiData.activeModule : apiData.activeModule?.title) ||
-            apiData.courseProgress?.activeModuleTitle ||
-            apiData.courseProgress?.currentModuleTitle ||
-            apiData.courseProgress?.activeModuleName ||
-            apiData.courseProgress?.currentModuleName ||
-            (typeof apiData.courseProgress?.currentModule === "string" ? apiData.courseProgress?.currentModule : apiData.courseProgress?.currentModule?.title) ||
-            (typeof apiData.courseProgress?.activeModule === "string" ? apiData.courseProgress?.activeModule : apiData.courseProgress?.activeModule?.title);
-
-          const perfMod = Array.isArray(apiData.modulePerformance)
-            ? apiData.modulePerformance.find((item: any) => {
-                const mId = Number(item.moduleId || item.id || 0);
-                return mId === Number(targetModId);
-              })
-            : null;
-          const perfTitle = perfMod?.moduleTitle;
-
-          const dbMappedTitle = targetModId ? (dbModulesMap[targetModId] || dbModulesMap[String(targetModId)]) : undefined;
-
-          const dbTitle = directApiTitle || perfTitle || dbMappedTitle;
-          if (dbTitle && typeof dbTitle === "string" && dbTitle.trim()) {
-            local.activeModuleTitle = dbTitle.trim();
-          } else {
-            local.activeModuleTitle = activeMod.title;
-          }
-
-          if (!activePhaseEntry && activeMod.phaseId) {
-            local.currentPhaseId = activeMod.phaseId;
-            const ph = curriculum.phases.find(p => p.id === activeMod.phaseId);
-            if (ph) local.currentPhaseTitle = ph.title;
-          }
-        }
       }
       if (apiData.averageScore !== undefined && apiData.averageScore !== null) {
         local.averageScore = apiData.averageScore;
@@ -1124,43 +1074,18 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       if (apiData.percentile !== undefined && apiData.percentile !== null) {
         local.percentile = apiData.percentile;
       }
-      const rawRank = apiData.rank ?? apiData.userRank ?? apiData.communityRank ?? apiData.leaderboardRank;
-      if (rawRank !== undefined && rawRank !== null) {
-        const parsed = typeof rawRank === "string" ? parseInt(rawRank.replace(/\D/g, ""), 10) : Number(rawRank);
-        if (!isNaN(parsed) && parsed > 0) {
-          local.rank = parsed;
-        }
-      } else if (leaderboardRank != null && leaderboardRank > 0) {
-        local.rank = leaderboardRank;
-      } else {
-        const totalLearners = apiData.totalLearners ?? apiData.totalUsers ?? apiData.totalStudents ?? apiData.totalLearnerCount;
-        if (totalLearners && apiData.percentile !== undefined && apiData.percentile !== null) {
-          const calculated = Math.round(Number(totalLearners) - (Number(apiData.percentile) * Number(totalLearners) / 100));
-          if (calculated > 0) {
-            local.rank = calculated;
-          }
-        }
+      if (apiData.rank !== undefined && apiData.rank !== null) {
+        local.rank = apiData.rank;
       }
       if (apiData.currentStreak !== undefined && apiData.currentStreak !== null) {
         local.streakDays = apiData.currentStreak;
       }
       if (apiData.modulePerformance && Array.isArray(apiData.modulePerformance)) {
-        local.moduleScores = apiData.modulePerformance.map((item: any) => {
-          const modId = Number(item.moduleId || item.id || 0);
-          const matchedMod = curriculum.modules.find((m) => m.id === modId);
-          const fullTitle = item.moduleTitle || (modId && (dbModulesMap[modId] || dbModulesMap[String(modId)])) || (matchedMod ? `Module ${modId}: ${matchedMod.title}` : `Module ${modId}`);
-          const rawScore = item.averageScore ?? item.percentage ?? item.scorePercentage ?? (item.maxScore && item.totalScore ? Math.round((item.totalScore / item.maxScore) * 100) : item.score ?? item.totalScore ?? 0);
-          const scorePercentage = Number(rawScore) % 1 === 0 ? Number(rawScore) : Math.round(Number(rawScore) * 100) / 100;
-          return {
-            name: `M${modId}`,
-            fullTitle,
-            score: scorePercentage,
-            scorePercentage,
-            totalScore: item.totalScore !== undefined && item.totalScore !== null ? Number(item.totalScore) : undefined,
-            maxScore: item.maxScore !== undefined && item.maxScore !== null ? Number(item.maxScore) : 100,
-            moduleId: modId,
-          };
-        });
+        local.moduleScores = apiData.modulePerformance.map((item: any) => ({
+          name: item.moduleTitle || `M${item.moduleId}`,
+          score: item.averageScore || item.totalScore || 0,
+          moduleId: item.moduleId,
+        }));
       }
 
       if (apiData.activityDates && Array.isArray(apiData.activityDates)) {
@@ -1207,22 +1132,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
           const dayDate = d.getDate();
 
           let logins = activeDatesMap.has(key) ? 1 : 0;
-          if (key === selectedDate) {
-            logins = 2;
-          }
 
           let minutes = 0;
           if (activeDatesMap.has(key)) {
             const count = activeDatesMap.get(key) || 1;
-            if (totalStudyMinutes > 0) {
-              minutes = Math.round((count / totalActivityCount) * totalStudyMinutes);
-            } else {
-              minutes = count * 30;
-            }
-          }
-
-          if (key === selectedDate) {
-            minutes = Math.round(minutes * 1.5) + 15;
+            // Estimate daily study time based on activity count rather than 
+            // flawed redistribution of lifetime totalStudyMinutes.
+            minutes = count * 15;
           }
 
           return {
@@ -1233,14 +1149,8 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
         });
       }
     }
-    if (local.activeModuleId && (dbModulesMap[local.activeModuleId] || dbModulesMap[String(local.activeModuleId)])) {
-      const dbTitle = dbModulesMap[local.activeModuleId] || dbModulesMap[String(local.activeModuleId)];
-      if (dbTitle && typeof dbTitle === "string" && dbTitle.trim()) {
-        local.activeModuleTitle = dbTitle.trim();
-      }
-    }
     return local;
-  }, [mounted, curriculum, apiData, selectedDate, leaderboardRank, certEligibility, dbModulesMap]);
+  }, [mounted, curriculum, apiData, selectedDate]);
 
   if (!ready || !user || !analytics) {
     return (
@@ -1254,14 +1164,6 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   const referralCode = `MST-${user.id.slice(-6).toUpperCase()}`;
   const referralLink = referralCode ? `${typeof window !== "undefined" ? window.location.origin : ""}/register?ref=${referralCode}` : "";
 
-  const displayRank =
-    (apiData?.rank != null && Number(apiData.rank) > 0 ? Number(apiData.rank) : null) ??
-    (apiData?.userRank != null && Number(apiData.userRank) > 0 ? Number(apiData.userRank) : null) ??
-    (apiData?.communityRank != null && Number(apiData.communityRank) > 0 ? Number(apiData.communityRank) : null) ??
-    (leaderboardRank != null && leaderboardRank > 0 ? leaderboardRank : null) ??
-    (analytics?.rank != null && analytics.rank > 0 ? analytics.rank : null) ??
-    1;
-
   const isAnotherUser = user.fullName.toLowerCase().includes("another") || user.email.toLowerCase().includes("another");
 
   const referralRecords: { name: string; joinedAt: string; status: string; eligible: boolean }[] = isAnotherUser ? [
@@ -1273,36 +1175,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
   const xpPct = Math.round(
     ((analytics.xp % 120) / Math.max(analytics.xpToNext, 1)) * 100
   );
-  const currentPhaseIndex = (() => {
-    if (!analytics) return 1;
-
-    // 1. Check currentPhaseId match in phaseJourney
-    if (analytics.currentPhaseId) {
-      const idx = analytics.phaseJourney.findIndex(p => p.phaseId === analytics.currentPhaseId);
-      if (idx !== -1) return idx + 1;
-
-      const numMatch = analytics.currentPhaseId.match(/phase-(\d+)/i);
-      if (numMatch && numMatch[1]) {
-        const n = parseInt(numMatch[1], 10);
-        if (!isNaN(n) && n > 0) return n;
-      }
-    }
-
-    // 2. Check for active phase in phaseJourney
-    const activeIdx = analytics.phaseJourney.findIndex(p => p.status === "active" && p.percent < 100);
-    if (activeIdx !== -1) return activeIdx + 1;
-
-    // 3. Check for first incomplete phase in phaseJourney
-    const incompleteIdx = analytics.phaseJourney.findIndex(p => p.percent < 100);
-    if (incompleteIdx !== -1) return incompleteIdx + 1;
-
-    // 4. If all completed, return total phases
-    if (analytics.phaseJourney.length > 0 && analytics.overallProgress >= 100) {
-      return analytics.phaseJourney.length;
-    }
-
-    return 1;
-  })();
+  const currentPhaseIndex = Math.max(1, analytics.phaseJourney.findIndex(p => p.phaseId === analytics.currentPhaseId) + 1);
 
   const today = new Date();
   const currentMonthDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
@@ -1343,9 +1216,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
             </div>
 
             <div className="flex items-center gap-3 border-b border-[var(--border)] pb-5 pt-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white">
-                {user.fullName.charAt(0).toUpperCase()}
-              </div>
+              {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+                <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-10 w-10 rounded-full object-cover shrink-0" />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white shrink-0">
+                  {user.fullName.charAt(0).toUpperCase()}
+                </div>
+              )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-[var(--text)]">
                   {user.fullName}
@@ -1460,9 +1337,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
       <div className="flex h-[calc(100vh-4rem)] bg-[var(--bg)] overflow-hidden">
         <aside className="hidden h-[calc(100vh-4rem)] w-64 shrink-0 flex-col border-r border-[var(--border)] bg-[var(--surface)] lg:fixed lg:top-16 lg:left-0 lg:flex z-20">
           <div className="flex items-center gap-3 border-b border-[var(--border)] px-5 py-5">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white">
-              {user.fullName.charAt(0).toUpperCase()}
-            </div>
+            {user.profileImageUrl || user.profileImage || user.profilePhoto ? (
+              <img src={user.profileImageUrl || user.profileImage || user.profilePhoto} alt={user.fullName} className="h-10 w-10 rounded-full object-cover shrink-0" />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-mst-red text-sm font-bold text-white shrink-0">
+                {user.fullName.charAt(0).toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--text)]">
                 {user.fullName}
@@ -1600,7 +1481,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
             aria-hidden
           />
 
-          <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:py-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <main className="relative z-10 flex-1 overflow-y-auto px-4 py-6 pb-24 sm:px-6 lg:py-8 lg:pb-8 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
             <div className="mx-auto max-w-6xl">
               <div className="mb-4 flex items-center justify-between lg:hidden border-b border-[var(--border)] pb-3">
                 <div className="flex items-center gap-3">
@@ -1615,7 +1496,6 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                     Command Center
                   </p>
                 </div>
-                <ThemeToggle />
               </div>
 
               {activeTab === 'profile' ? (
@@ -1655,7 +1535,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                         </h1>
                         <p className="mt-3 max-w-xl text-sm leading-relaxed text-[var(--text-muted)] sm:text-base">
                           You are ahead of{" "}
-                          <strong className="text-[var(--text)]">{analytics.percentile}%</strong> of
+                          <strong className="text-[var(--text)]">{100 - analytics.percentile}%</strong> of
                           learners this week. Keep pushing - your next milestone is close.
                         </p>
                         <div className="mt-6 flex flex-wrap gap-3">
@@ -1664,10 +1544,10 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                             {analytics.streakDays}d streak
                           </span>
                           <span className="flex items-center rounded-full border border-purple-500/40 bg-purple-500/10 px-3.5 py-1.5 text-xs font-bold text-purple-400 shadow-sm backdrop-blur-sm transition hover:bg-purple-500/20">
-                            Phase: {analytics.currentPhaseTitle.slice(0, 28)}
+                            Phase {currentPhaseIndex}: {currentPhaseIndex === 1 ? "Foundation" : currentPhaseIndex === 2 ? "Tooling" : currentPhaseIndex === 3 ? "Build" : "Launch"}
                           </span>
                           <span className="flex items-center rounded-full border border-blue-500/40 bg-blue-500/10 px-3.5 py-1.5 text-xs font-bold text-blue-400 shadow-sm backdrop-blur-sm transition hover:bg-blue-500/20">
-                            Rank #{displayRank}
+                            Rank #{leaderboardRank ?? analytics.rank}
                           </span>
                         </div>
                       </div>
@@ -1703,10 +1583,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                         <div className="min-w-[150px]">
                           <p className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">XP Progress</p>
                           <p className="mt-1 text-2xl font-black tracking-tight text-[var(--text)]">
-                            {analytics.overallProgress}%{" "}
-                            <span className="text-sm font-bold text-[var(--text-muted)]">
-                              {analytics.overallProgress >= 100 ? "Completed" : "In Progress"}
-                            </span>
+                            {analytics.overallProgress}% <span className="text-sm font-bold text-[var(--text-muted)]">Complete</span>
                           </p>
                           <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[var(--border)]/50 shadow-inner">
                             <motion.div
@@ -1717,13 +1594,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                             />
                           </div>
                           <p className="mt-2 flex justify-between text-[11px] font-medium text-[var(--text-muted)]">
-                            <span>
-                              {analytics.overallProgress >= 100
-                                ? 0
-                                : (100 - analytics.overallProgress) % 1 === 0
-                                  ? 100 - analytics.overallProgress
-                                  : Math.round((100 - analytics.overallProgress) * 100) / 100}% to go
-                            </span>
+                            <span>{100 - analytics.overallProgress}% to go</span>
                             {analytics.overallProgress < 100 && (
                               <span className="font-bold text-[var(--text)]">Keep learning</span>
                             )}
@@ -1759,25 +1630,13 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                               <div className="flex justify-between text-xs font-bold text-[var(--text-muted)] mb-2">
                                 <span>Submodule Completion Progress</span>
                                 <span className="text-[var(--text)]">
-                                  {certEligibility.completedSubmodules} / {certEligibility.totalSubmodules} (
-                                  {certEligibility.totalSubmodules > 0
-                                    ? ((certEligibility.completedSubmodules / certEligibility.totalSubmodules) * 100) % 1 === 0
-                                      ? (certEligibility.completedSubmodules / certEligibility.totalSubmodules) * 100
-                                      : Math.round(((certEligibility.completedSubmodules / certEligibility.totalSubmodules) * 100) * 100) / 100
-                                    : 0}%)
+                                  {certEligibility.completedSubmodules} / {certEligibility.totalSubmodules} ({Math.round((certEligibility.completedSubmodules / Math.max(1, certEligibility.totalSubmodules)) * 100)}%)
                                 </span>
                               </div>
                               <div className="h-2.5 overflow-hidden rounded-full bg-[var(--border)]/50 shadow-inner">
                                 <div
                                   className="h-full rounded-full bg-gradient-to-r from-mst-red via-purple-500 to-emerald-500 transition-all duration-1000"
-                                  style={{
-                                    width: `${Math.min(
-                                      100,
-                                      certEligibility.totalSubmodules > 0
-                                        ? (certEligibility.completedSubmodules / certEligibility.totalSubmodules) * 100
-                                        : 0
-                                    )}%`
-                                  }}
+                                  style={{ width: `${Math.min(100, (certEligibility.completedSubmodules / Math.max(1, certEligibility.totalSubmodules)) * 100)}%` }}
                                 />
                               </div>
                               <p className="mt-2 text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
@@ -1837,7 +1696,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
                   <section className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
                     {[
-                      { label: "Progress", value: `${analytics.overallProgress}%`, icon: Target, color: "text-mst-red", bg: "bg-mst-red/10 border-mst-red/20" },
+                      { label: "Completion", value: `${analytics.overallProgress}%`, icon: Target, color: "text-mst-red", bg: "bg-mst-red/10 border-mst-red/20" },
                       { label: "Modules", value: `${analytics.modulesCompleted}/${analytics.totalModules}`, icon: BookOpen, color: "text-emerald-500", bg: "bg-emerald-500/10 border-emerald-500/20" },
                       { label: "Avg Score", value: analytics.averageScore > 0 ? `${analytics.averageScore}%` : "-", icon: Award, color: "text-amber-500", bg: "bg-amber-500/10 border-amber-500/20" },
                       { label: "Total Score", value: apiData?.totalScore !== undefined && apiData?.totalScore !== null ? `${apiData.totalScore}/2100` : "-", icon: Brain, color: "text-purple-500", bg: "bg-purple-500/10 border-purple-500/20" },
@@ -1846,15 +1705,17 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       //{ label: "Consistency", value: `${analytics.revisionConsistency}%`, icon: TrendingUp, color: "text-purple-400", bg: "bg-purple-400/10 border-purple-400/20" },
                       { label: "Percentile", value: `Top ${analytics.percentile}%`, icon: Trophy, color: "text-mst-red", bg: "bg-mst-red/10 border-mst-red/20" },
                     ].map((s, i) => (
-                      <GlassCard key={s.label} className="!p-6 flex flex-col gap-3 group cursor-default">
-                        <div className={`w-fit rounded-xl border ${s.bg} p-3 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                          <s.icon className={`h-5 w-5 ${s.color}`} />
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
-                            {s.label}
-                          </p>
-                          <p className="mt-1 text-2xl font-black text-[var(--text)] tracking-tight">{s.value}</p>
+                      <GlassCard key={s.label} className="!p-5 group cursor-default">
+                        <div className="flex flex-col gap-2.5">
+                          <div className={`w-fit rounded-xl border ${s.bg} p-2.5 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}>
+                            <s.icon className={`h-5 w-5 ${s.color}`} />
+                          </div>
+                          <div>
+                            <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                              {s.label}
+                            </p>
+                            <p className="mt-0.5 text-2xl font-black text-[var(--text)] tracking-tight">{s.value}</p>
+                          </div>
                         </div>
                       </GlassCard>
                     ))}
@@ -1933,8 +1794,8 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <section className="mt-4 grid gap-4 lg:grid-cols-3">
                     <GlassCard className="lg:col-span-1">
                       <h3 className="text-sm font-black text-[var(--text)]">Course Completion</h3>
-                      <div className="mt-2 h-48 w-full min-w-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={160}>
+                      <div className="mt-2 h-48">
+                        <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie
                               data={analytics.completionDonut}
@@ -1947,7 +1808,19 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                                 <Cell key={e.name} fill={e.color} />
                               ))}
                             </Pie>
-                            <Tooltip />
+                            <Tooltip
+                              contentStyle={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border)',
+                                borderRadius: '10px',
+                                color: 'var(--text)',
+                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+                                padding: '8px 12px',
+                              }}
+                              itemStyle={{ color: 'var(--text)', fontWeight: 600 }}
+                              labelStyle={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}
+                              formatter={(value: any, name: any) => [`${value ?? 0} modules`, name]}
+                            />
                           </PieChart>
                         </ResponsiveContainer>
                       </div>
@@ -1962,44 +1835,29 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                     </GlassCard>
 
                     <GlassCard className="lg:col-span-2">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-sm font-black text-[var(--text)]">Module Performance</h3>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Score Percentage (%)</span>
-                      </div>
-                      <div className="mt-4 h-48 w-full min-w-0">
-                        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={180}>
-                          <BarChart data={analytics.moduleScores.length ? analytics.moduleScores : [{ name: "-", score: 0, moduleId: 0 }]}>
+                      <h3 className="text-sm font-black text-[var(--text)]">Module Performance</h3>
+                      <div className="mt-4 h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart
+                            data={analytics.moduleScores.length ? analytics.moduleScores : [{ name: "-", score: 0, moduleId: 0 }]}
+                            margin={{ top: 5, right: 5, left: 0, bottom: 0 }}
+                          >
                             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
                             <XAxis dataKey="name" tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                            <YAxis domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[0, 100]} width={25} tick={{ fill: "var(--text-muted)", fontSize: 10 }} axisLine={false} tickLine={false} />
                             <Tooltip
-                              content={({ active, payload }) => {
-                                if (active && payload && payload.length) {
-                                  const data = payload[0].payload as any;
-                                  return (
-                                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-xl backdrop-blur-md">
-                                      <p className="text-xs font-black text-[var(--text)] max-w-[260px] leading-tight mb-2">
-                                        {data.fullTitle || data.name}
-                                      </p>
-                                      <div className="space-y-1 text-xs">
-                                        <p className="flex items-center justify-between gap-4 font-bold text-mst-red">
-                                          <span className="text-[var(--text-muted)] font-medium">Score Percentage:</span>
-                                          <span>{data.scorePercentage ?? data.score}%</span>
-                                        </p>
-                                        {data.totalScore !== undefined && data.totalScore !== null && (
-                                          <p className="flex items-center justify-between gap-4 text-[11px] text-[var(--text-muted)]">
-                                            <span>Total Score:</span>
-                                            <span className="font-bold text-[var(--text)]">
-                                              {data.totalScore} / {data.maxScore || 100}
-                                            </span>
-                                          </p>
-                                        )}
-                                      </div>
-                                    </div>
-                                  );
-                                }
-                                return null;
+                              cursor={{ fill: 'var(--border)', opacity: 0.25 }}
+                              contentStyle={{
+                                backgroundColor: 'var(--surface)',
+                                borderColor: 'var(--border)',
+                                borderRadius: '10px',
+                                color: 'var(--text)',
+                                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+                                padding: '8px 12px',
                               }}
+                              itemStyle={{ color: 'var(--text)', fontWeight: 600 }}
+                              labelStyle={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}
+                              formatter={(value: any) => [`${value ?? 0} / 100`, 'Score']}
                             />
                             <Bar dataKey="score" radius={[4, 4, 0, 0]} fill="#e31e24" maxBarSize={28} />
                           </BarChart>
@@ -2072,17 +1930,74 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       )}
                     </GlassCard>
 
-                    <GlassCard>
-                      <h3 className="text-sm font-black text-[var(--text)]">Weekly Study Time</h3>
-                      <div className="mt-4 h-44">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={analytics.dailyStudy}>
-                            <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
-                            <XAxis dataKey="day" tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <YAxis tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                            <Bar dataKey="minutes" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={32} />
-                          </BarChart>
-                        </ResponsiveContainer>
+                    <GlassCard className="h-full">
+                      <div className="flex h-full flex-col">
+                        <h3 className="text-sm font-black text-[var(--text)]">Weekly Study Time</h3>
+                        <div className="mt-4 flex-1 min-h-[11rem]">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart
+                              data={analytics.dailyStudy}
+                              margin={{ top: 8, right: 6, left: -4, bottom: 12 }}
+                            >
+                              <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
+                              <XAxis 
+                                dataKey="day" 
+                                interval={0} 
+                                tick={(props: any) => {
+                                  const { x, y, payload } = props;
+                                  const raw = String(payload?.value || "");
+                                  const [dayName, dayNum] = raw.split(" ");
+                                  return (
+                                    <g transform={`translate(${x},${y})`}>
+                                      <text
+                                        x={0}
+                                        y={0}
+                                        dy={9}
+                                        textAnchor="middle"
+                                        fill="var(--text-muted)"
+                                        fontSize={10}
+                                        fontWeight={600}
+                                      >
+                                        {dayName}
+                                      </text>
+                                      {dayNum && (
+                                        <text
+                                          x={0}
+                                          y={0}
+                                          dy={20}
+                                          textAnchor="middle"
+                                          fill="var(--text-muted)"
+                                          fontSize={9}
+                                          opacity={0.8}
+                                        >
+                                          {dayNum}
+                                        </text>
+                                      )}
+                                    </g>
+                                  );
+                                }}
+                                axisLine={false} 
+                                tickLine={false} 
+                              />
+                              <YAxis width={22} tick={{ fill: "var(--text-muted)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                              <Tooltip 
+                                cursor={{ fill: 'var(--border)', opacity: 0.25 }}
+                                contentStyle={{
+                                  backgroundColor: 'var(--surface)',
+                                  borderColor: 'var(--border)',
+                                  borderRadius: '10px',
+                                  color: 'var(--text)',
+                                  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.24)',
+                                  padding: '8px 12px',
+                                }}
+                                itemStyle={{ color: 'var(--text)', fontWeight: 600 }}
+                                labelStyle={{ color: 'var(--text-muted)', fontSize: '11px', fontWeight: 700, marginBottom: '4px' }}
+                                formatter={(value: any) => [`${value ?? 0} mins`, 'Study Time']}
+                              />
+                              <Bar dataKey="minutes" fill="#e31e24" radius={[4, 4, 0, 0]} maxBarSize={32} />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
                       </div>
                     </GlassCard>
                   </section>
@@ -2188,7 +2103,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
 
                     <GlassCard glow="rgba(227,30,36,0.1)">
                       <h3 className="text-sm font-black text-[var(--text)]">Community Ranking</h3>
-                      <p className="mt-4 text-4xl font-black text-gradient-red">#{displayRank}</p>
+                      <p className="mt-4 text-4xl font-black text-gradient-red">#{leaderboardRank ?? analytics.rank}</p>
                       <p className="mt-1 text-sm text-[var(--text-muted)]">
                         Top {analytics.percentile}% of academy learners
                       </p>
@@ -2201,11 +2116,9 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                           <span className="text-[var(--text-muted)]">Coin balance</span>
                           <span className="font-bold text-amber-500">- $MSTC</span>
                         </p> */}
-                        <p className="flex justify-between items-center gap-2">
-                          <span className="text-[var(--text-muted)] shrink-0">Current module</span>
-                          <span className="font-bold text-right truncate max-w-[190px]" title={analytics.activeModuleTitle}>
-                            {analytics.activeModuleTitle}
-                          </span>
+                        <p className="flex justify-between">
+                          <span className="text-[var(--text-muted)]">Current module</span>
+                          <span className="font-bold truncate max-w-[160px]">{analytics.activeModuleTitle}</span>
                         </p>
                       </div>
                       <Link
@@ -2328,75 +2241,203 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
               </button>
             </div>
 
-            <div className="mb-4 flex flex-col md:flex-row items-stretch justify-center gap-6 rounded-xl border border-[var(--border)] bg-[var(--bg-muted)] p-5 shrink-0 text-left">
-              <div className="flex flex-col items-center justify-between gap-2 text-center shrink-0 w-full md:max-w-[200px]">
-                <div className="flex flex-col items-center gap-2">
-                  <p className="text-xs font-bold text-[var(--text)]">Scan to Pay</p>
-                  <div className="overflow-hidden rounded-xl border border-[var(--border)] bg-white p-2 shadow-sm">
-                    <img
-                      src="/MasterstrokePaymentQRCode.jpg"
-                      alt="Payment QR Code"
-                      className="h-[140px] w-[140px] object-contain"
-                    />
+            <div className="mb-4 space-y-3.5 shrink-0 text-left">
+              {/* Bank Details Card */}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:p-6 shadow-sm text-left">
+                <div className="flex items-center gap-3.5 mb-5">
+                  <div
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border shadow-sm"
+                    style={{ backgroundColor: '#eaf2ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+                  >
+                    <Landmark className="h-6 w-6" strokeWidth={2.3} />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-extrabold text-[var(--text)] tracking-tight">
+                      Bank Details
+                    </h4>
+                    <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                      Transfer the amount to the below account details
+                    </p>
                   </div>
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)] leading-normal mt-1">
-                  Already paid? Fill in the transaction details below so we can verify it.
-                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 pt-1">
+                  {/* Field 1: ACCOUNT NAME */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <User className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NAME
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm tracking-wide">
+                      SMART ANGELOS FOUNDATION
+                    </p>
+                  </div>
+
+                  {/* Field 2: ACCOUNT NUMBER */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <CreditCard className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        ACCOUNT NUMBER
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        100211590045
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("100211590045", "acc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy Account Number"
+                      >
+                        {copiedBankKey === "acc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Field 3: IFSC CODE */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <QrCode className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        IFSC CODE
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="font-mono font-extrabold text-[var(--text)] text-xs sm:text-sm">
+                        INDB0001375
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyBank("INDB0001375", "ifsc")}
+                        className="text-gray-400 hover:text-[var(--text)] transition p-0.5 cursor-pointer"
+                        title="Copy IFSC Code"
+                      >
+                        {copiedBankKey === "ifsc" ? (
+                          <Check className="h-3.5 w-3.5 text-emerald-500" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Field 4: BANK & BRANCH */}
+                  <div>
+                    <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 mb-1">
+                      <MapPin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                        BANK & BRANCH
+                      </span>
+                    </div>
+                    <p className="font-extrabold text-[var(--text)] text-xs sm:text-sm leading-snug">
+                      MUKUNDNAGAR SWARGET PUNE BRANCH
+                    </p>
+                  </div>
+                </div>
               </div>
 
+              {/* Plan Summary Card - Reduced Size */}
               {(() => {
                 const roleStr = (liveRole || user?.role || "").toLowerCase().replace(/[-_\s]/g, "");
                 let pricing = null;
                 if (roleStr === "courseonly" || roleStr === "ojt") {
                   pricing = { name: "OJT", base: 4999 };
                 } else if (roleStr === "workingprofessional" || roleStr === "web3enthusiast" || roleStr === "normal") {
-                  pricing = { name: "Working Professional - Web3 Enthusiast", base: 24999 };
+                  pricing = { name: "Working Professional", base: 24999 };
                 } else if (roleStr === "validator") {
                   pricing = { name: "Validator", base: 9999 };
-                } else if (roleStr === "student") {
+                } else {
                   pricing = { name: "Student", base: 19999 };
                 }
-
-                if (!pricing) return null;
 
                 const base = pricing.base;
                 const discountPercent = userDiscount || 0;
                 const discountAmount = (base * discountPercent) / 100;
-                const discountedBase = base - discountAmount;
-                const gst = discountedBase * 0.18;
-                const total = discountedBase * 1.18;
+                const totalPayable = base - discountAmount;
 
                 return (
-                  <div className="w-full md:w-auto min-w-[240px] flex-grow rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm flex flex-col justify-between">
-                    <div>
-                      <h4 className="text-xs font-black uppercase tracking-wider text-mst-red mb-3">
-                        Plan: {pricing.name}
-                      </h4>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">Role Amount:</span>
-                          <span className="font-bold text-[var(--text)]">₹{base.toLocaleString('en-IN')}</span>
-                        </div>
-                        {discountPercent > 0 && (
-                          <div className="flex justify-between border-b border-[var(--border)] pb-1.5 text-green-600">
-                            <span>Discount ({discountPercent}%):</span>
-                            <span className="font-bold">-₹{discountAmount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between border-b border-[var(--border)] pb-1.5">
-                          <span className="text-[var(--text-muted)]">18% GST:</span>
-                          <span className="font-bold text-[var(--text)]">₹{gst.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                        </div>
+                  <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-3.5 sm:px-5 sm:py-4 shadow-sm text-left">
+                    <div className="flex items-center gap-3 mb-2.5">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border shadow-sm"
+                        style={{ backgroundColor: '#e6fbf7', color: '#0d9488', borderColor: '#99f6e4' }}
+                      >
+                        <FileText className="h-5 w-5" strokeWidth={2.3} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-[var(--text)] tracking-tight">
+                          Plan Summary
+                        </h4>
+                        <p className="text-[11px] text-[var(--text-muted)]">
+                          Details of the selected program
+                        </p>
                       </div>
                     </div>
-                    <div className="flex justify-between items-baseline pt-3 mt-4 border-t border-[var(--border)]">
-                      <span className="font-black text-xs text-[var(--text)]">Total (Incl. GST):</span>
-                      <span className="font-black text-mst-red text-base whitespace-nowrap">₹{total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-0.5">
+                      <div className="flex flex-wrap sm:flex-nowrap items-center gap-3 sm:gap-4 md:gap-5">
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            PLAN
+                          </span>
+                          <span className="font-black text-xs sm:text-sm text-mst-red uppercase whitespace-nowrap">
+                            {pricing.name}
+                          </span>
+                        </div>
+
+                        <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+
+                        <div>
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400 block mb-0.5">
+                            ROLE AMOUNT
+                          </span>
+                          <span className="font-extrabold text-xs sm:text-sm text-[var(--text)] whitespace-nowrap">
+                            ₹{base.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+
+                        {discountPercent > 0 && (
+                          <>
+                            <div className="h-7 w-px bg-[var(--border)] shrink-0" />
+                            <div>
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 block mb-0.5">
+                                DISCOUNT ({discountPercent}%)
+                              </span>
+                              <span className="font-extrabold text-xs sm:text-sm text-emerald-600 whitespace-nowrap">
+                                -₹{discountAmount.toLocaleString('en-IN')}
+                              </span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+
+                      <div
+                        className="w-full sm:w-auto shrink-0 rounded-xl border px-3.5 py-1.5 text-left sm:text-right"
+                        style={{ backgroundColor: '#fff1f2', borderColor: '#fecdd3' }}
+                      >
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-rose-500 block">
+                          TOTAL AMOUNT
+                        </span>
+                        <span className="text-base sm:text-lg font-black text-mst-red tracking-tight block whitespace-nowrap">
+                          ₹{totalPayable.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 );
               })()}
+
+              <p className="text-center text-xs text-[var(--text-muted)] pt-1">
+                Already paid? Fill in the transaction details below so we can verify it.
+              </p>
             </div>
 
             <form onSubmit={handleAllocationSubmit} className="space-y-3">
@@ -2407,7 +2448,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                 <input
                   type="text"
                   value={allocationForm.accountHolderName}
-                  onChange={(e) => setAllocationForm({ ...allocationForm, accountHolderName: e.target.value })}
+                  onChange={(e) => handleAllocationFieldChange('accountHolderName', e.target.value)}
                   className={`w-full rounded-lg border ${allocationErrors.accountHolderName ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   placeholder="Enter account holder name"
                 />
@@ -2424,7 +2465,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="number"
                     value={allocationForm.amountPaid}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, amountPaid: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('amountPaid', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.amountPaid ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="2999"
                   />
@@ -2440,7 +2481,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="date"
                     value={allocationForm.paymentDate}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentDate: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('paymentDate', e.target.value)}
                     max={(() => {
                       const d = new Date();
                       const year = d.getFullYear();
@@ -2448,7 +2489,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       const day = String(d.getDate()).padStart(2, '0');
                       return `${year}-${month}-${day}`;
                     })()}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
+                    className={`w-full rounded-lg border ${allocationErrors.paymentDate ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   />
                   {allocationErrors.paymentDate && (
                     <p className="mt-0.5 text-[10px] text-red-500">{allocationErrors.paymentDate}</p>
@@ -2464,7 +2505,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.transactionId}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, transactionId: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('transactionId', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.transactionId ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="UTR123456789"
                   />
@@ -2479,8 +2520,8 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   </label>
                   <select
                     value={allocationForm.paymentMethod}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, paymentMethod: e.target.value })}
-                    className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]"
+                    onChange={(e) => handleAllocationFieldChange('paymentMethod', e.target.value)}
+                    className={`w-full rounded-lg border ${allocationErrors.paymentMethod ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all text-[var(--text)]`}
                   >
                     <option value="">Select Method</option>
                     <option value="UPI">UPI</option>
@@ -2500,7 +2541,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.addressLine1}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine1: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine1', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.addressLine1 ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="123 Main Road"
                   />
@@ -2516,7 +2557,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.addressLine2}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, addressLine2: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('addressLine2', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Near Central Mall"
                   />
@@ -2531,7 +2572,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.city}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, city: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('city', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.city ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai"
                   />
@@ -2547,7 +2588,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.district}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, district: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('district', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.district ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Mumbai Suburban"
                   />
@@ -2565,7 +2606,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.state}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, state: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('state', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.state ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="Maharashtra"
                   />
@@ -2581,7 +2622,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.pincode}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, pincode: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('pincode', e.target.value)}
                     className={`w-full rounded-lg border ${allocationErrors.pincode ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                     placeholder="400001"
                   />
@@ -2598,7 +2639,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                 <input
                   type="text"
                   value={allocationForm.country}
-                  onChange={(e) => setAllocationForm({ ...allocationForm, country: e.target.value })}
+                  onChange={(e) => handleAllocationFieldChange('country', e.target.value)}
                   className={`w-full rounded-lg border ${allocationErrors.country ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all`}
                   placeholder="India"
                 />
@@ -2615,14 +2656,14 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                       <span className="text-mst-red">*</span>
                     )}
                   </label>
-                  <div className={`flex items-center gap-3 w-full rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
+                  <div className={`flex items-center gap-3 w-full min-w-0 rounded-lg border ${allocationErrors.paymentScreenshotUrl ? 'border-red-500' : 'border-[var(--border)]'} bg-[var(--bg-muted)] px-3 py-1.5`}>
                     <label
                       htmlFor="screenshotUploadInput"
                       className="cursor-pointer rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[10px] font-bold text-[var(--text)] hover:bg-[var(--border)] transition-all shrink-0 shadow-sm"
                     >
                       Choose File
                     </label>
-                    <span className="text-[10px] text-[var(--text-muted)] truncate">
+                    <span className="text-[10px] text-[var(--text-muted)] min-w-0 flex-1 truncate">
                       {screenshotFileName ? screenshotFileName : "No file chosen"}
                     </span>
                     <input
@@ -2648,7 +2689,7 @@ export function StudentCommandCenter({ curriculum }: { curriculum: Curriculum })
                   <input
                     type="text"
                     value={allocationForm.additionalNotes}
-                    onChange={(e) => setAllocationForm({ ...allocationForm, additionalNotes: e.target.value })}
+                    onChange={(e) => handleAllocationFieldChange('additionalNotes', e.target.value)}
                     className="w-full rounded-lg border border-[var(--border)] bg-[var(--bg-muted)] px-3 py-2 text-xs text-[var(--text)] focus:border-mst-red focus:outline-none transition-all"
                     placeholder="Payment completed successfully"
                   />

@@ -98,7 +98,7 @@ export function LeaderboardView() {
 
   useEffect(() => {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-    const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") || localStorage.getItem("token") || localStorage.getItem("jwt") : null;
+    const token = typeof window !== "undefined" ? localStorage.getItem("admin-token") : null;
     const headers: Record<string, string> = {};
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
@@ -114,10 +114,9 @@ export function LeaderboardView() {
         return r.json();
       })
       .then((raw: BackendLeaderboardEntry[]) => {
-        const valid = Array.isArray(raw) ? raw.filter((e) => (e._id != null || (e as any).id != null) && e.name != null) : [];
+        const valid = raw.filter((e) => e._id != null && e.name != null);
         const list: LeaderboardEntry[] = valid.map(mapBackendEntry);
         list.sort((a, b) => {
-          if (a.rank != null && b.rank != null) return a.rank - b.rank;
           if (b.score !== a.score) return b.score - a.score;
           if (b.modulesDone !== a.modulesDone) return b.modulesDone - a.modulesDone;
           return (a.rank ?? 999) - (b.rank ?? 999);
@@ -151,33 +150,33 @@ export function LeaderboardView() {
           <div className="flex flex-col gap-12 lg:flex-row lg:gap-16 h-full">
 
             {/* Left Side: Fixed Header & Podium */}
-            <div className="lg:w-[400px] shrink-0 pt-8 sm:pt-12 lg:h-full lg:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="lg:w-[400px] shrink-0 pt-6 sm:pt-12 lg:h-full lg:overflow-y-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
               <div className="text-left">
-                <span className="inline-block rounded-full bg-[#e31e24]/10 px-4 py-1.5 text-xs font-bold tracking-[0.1em] text-[#e31e24]">
+                <span className="inline-block rounded-full bg-[#e31e24]/10 px-3.5 py-1 sm:px-4 sm:py-1.5 text-[11px] sm:text-xs font-bold tracking-[0.1em] text-[#e31e24]">
                   ACADEMY RANKINGS
                 </span>
-                <h1 className="mt-4 text-6xl font-black text-[#e31e24] tracking-tight">
+                <h1 className="mt-3 sm:mt-4 text-3xl sm:text-5xl lg:text-6xl font-black text-[#e31e24] tracking-tight">
                   Leaderboard
                 </h1>
-                <p className="mt-4 text-base font-medium text-[var(--text-muted)] max-w-sm leading-relaxed">
+                <p className="mt-2 sm:mt-4 text-sm sm:text-base font-medium text-[var(--text-muted)] max-w-sm leading-relaxed">
                   Top learners ranked by course progress, daily coin streaks, and module completion.
                 </p>
 
-                <div className="mt-8">
+                <div className="mt-6 sm:mt-8">
                   <Link
                     href="/learn"
-                    className="inline-flex items-center gap-2 rounded-full bg-[#e31e24] px-6 py-3.5 text-sm font-bold text-white transition-all hover:bg-red-700 hover:scale-[1.02] shadow-sm"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl sm:rounded-full bg-[#e31e24] px-4 sm:px-6 py-3 sm:py-3.5 text-xs sm:text-sm font-bold text-white transition-all hover:bg-red-700 hover:scale-[1.02] shadow-sm w-full sm:w-auto text-center"
                   >
-                    <BookOpen className="h-4 w-4" />
-                    Climb the leaderboard - start learning
-                    <ArrowRight className="h-4 w-4" />
+                    <BookOpen className="h-4 w-4 shrink-0" />
+                    <span>Climb the leaderboard - start learning</span>
+                    <ArrowRight className="h-4 w-4 shrink-0" />
                   </Link>
                 </div>
               </div>
 
               {/* Podium */}
-              <div className="mt-12 pb-12 lg:pb-0">
-                <div className="mx-auto grid grid-cols-3 items-end gap-3 px-2 sm:px-0">
+              <div className="mt-8 sm:mt-12 pb-8 lg:pb-0">
+                <div className="mx-auto grid grid-cols-3 items-end gap-2 sm:gap-3 px-1 sm:px-0">
                   {podium.map((entry, i) => {
                     const style = PODIUM_STYLES[i];
                     if (!entry || !style) return null;
@@ -222,7 +221,7 @@ export function LeaderboardView() {
                     {/* Left: Rank Box & Info */}
                     <div className="flex items-center gap-3 sm:gap-4 min-w-0">
                       <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] border border-[var(--border)] bg-[var(--bg)] text-base sm:text-lg font-black text-[var(--text-muted)] group-hover:border-[#e31e24]/30 group-hover:bg-[#e31e24]/5 group-hover:text-[#e31e24] transition-colors ${row.isYou ? "border-[#e31e24]/30 bg-[#e31e24]/5 text-[#e31e24]" : ""}`}>
-                        #{row.rank ?? (idx + 1)}
+                        #{idx + 1}
                       </div>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 flex-wrap">
