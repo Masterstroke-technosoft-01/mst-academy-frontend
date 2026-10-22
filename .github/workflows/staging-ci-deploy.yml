@@ -103,7 +103,7 @@ jobs:
           npm ci
           npm run build
 
-          pm2 restart frontend
+          pm2 restart mst-academy-frontend-staging
 
           echo "Staging build completed successfully."
           REMOTE
