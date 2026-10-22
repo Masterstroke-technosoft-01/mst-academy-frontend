@@ -103,6 +103,8 @@ jobs:
           npm ci
           npm run build
 
+          pm2 restart frontend
+
           echo "Staging build completed successfully."
           REMOTE
 
