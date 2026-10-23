@@ -1,59 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
 import Link from "next/link";
-import Script from "next/script";
 import { motion } from "framer-motion";
-import { Sparkles, Calendar, Clock, ArrowRight, User } from "lucide-react";
+import { Sparkles, Calendar, Clock, ArrowRight, User, BookOpen } from "lucide-react";
 import type { BlogPost } from "@/lib/blog";
-
-const CMS_URL = (process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy").replace(/\/+$/, "");
-const SITE_TOKEN = process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "site_token_demo_mst_academy_1785489667016";
 
 interface BlogListClientProps {
   initialPosts?: BlogPost[];
 }
 
 export function BlogListClient({ initialPosts = [] }: BlogListClientProps) {
-  useEffect(() => {
-    // The CMS widget uses a Shadow DOM, so global CSS won't affect it.
-    const interval = setInterval(() => {
-      const widget = document.querySelector('[data-widget="latest-posts"]');
-      if (widget && widget.shadowRoot) {
-        if (!widget.shadowRoot.querySelector("#custom-widget-style")) {
-          const style = document.createElement("style");
-          style.id = "custom-widget-style";
-          style.textContent = `
-            .mst-card-image {
-              object-fit: contain !important;
-              background-color: #f9fafb !important;
-              aspect-ratio: 16/9 !important;
-              width: 100% !important;
-              height: auto !important;
-            }
-            .mst-card {
-              border: 1px solid black !important;
-              transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease !important;
-            }
-            .mst-card:hover {
-              transform: translateY(-4px) !important;
-              box-shadow: 0 12px 24px -10px rgba(0,0,0,0.1) !important;
-              border-color: #e31e24 !important;
-            }
-          `;
-          widget.shadowRoot.appendChild(style);
-        }
-        clearInterval(interval);
-      }
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, []);
-
   return (
     <div className="min-h-screen bg-[var(--bg)] selection:bg-[var(--mst-red)] selection:text-white">
-      <Script src={`${CMS_URL}/widget.js`} strategy="afterInteractive" />
-
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-to-b from-[var(--bg-muted)] to-[var(--bg)] pt-24 pb-16 border-b border-[var(--border)]">
         <div className="absolute inset-0 bg-grid opacity-[0.03] dark:opacity-[0.05]" />
@@ -82,7 +40,7 @@ export function BlogListClient({ initialPosts = [] }: BlogListClientProps) {
         </div>
       </div>
 
-      {/* Server-Rendered Post Cards Grid for 100% Crawlability & Immediate Display */}
+      {/* Server-Rendered Post Cards Grid or Empty State */}
       <div className="mx-auto max-w-6xl px-4 py-16 relative">
         {initialPosts && initialPosts.length > 0 ? (
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
@@ -169,12 +127,18 @@ export function BlogListClient({ initialPosts = [] }: BlogListClientProps) {
             })}
           </div>
         ) : (
-          <div
-            data-widget="latest-posts"
-            data-token={SITE_TOKEN}
-            data-link-base="/blogs"
-            className="w-full min-h-[400px]"
-          />
+          <div className="mx-auto max-w-lg rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-10 text-center shadow-sm">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[rgba(227,30,36,0.1)] text-[var(--mst-red)] border border-[rgba(227,30,36,0.2)]">
+              <BookOpen className="h-7 w-7" />
+            </div>
+            <h3 className="text-xl font-bold text-[var(--text)] mb-2">
+              No Blogs Found
+            </h3>
+            <p className="text-sm text-[var(--text-muted)] leading-relaxed mb-6">
+              There are currently no blog posts published. New articles, Web3 tutorials, and industry insights will appear here once added.
+            </p>
+           
+          </div>
         )}
       </div>
     </div>
