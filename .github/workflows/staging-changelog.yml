@@ -1,0 +1,406 @@
+name: Staging Changelog Automation
+
+# ==========================================================
+# TRIGGER: Wait for the existing staging workflow to finish
+# ==========================================================
+on:
+  workflow_run:
+    workflows:
+      - "MST Academy Frontend Staging CI and Build"
+    types:
+      - completed
+    branches:
+      - staging
+
+# ==========================================================
+# PERMISSIONS
+# ==========================================================
+permissions:
+  contents: write
+  pull-requests: read
+
+# ==========================================================
+# CONCURRENCY
+# Uses the same group as the existing staging workflow
+# to prevent overlapping deployment and synchronization.
+# ==========================================================
+concurrency:
+  group: mst-academy-frontend-staging
+  cancel-in-progress: false
+
+jobs:
+  update-changelog:
+
+    # Proceed only after a successful push-triggered run
+    # of the existing workflow on the staging branch.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'staging'
+
+    runs-on: ubuntu-latest
+
+    environment: staging
+
+    steps:
+
+      # ==================================================
+      # STEP 1: CHECK OUT STAGING
+      # ==================================================
+      - name: Checkout staging branch
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0
+          token: ${{ github.token }}
+          persist-credentials: true
+
+      # ==================================================
+      # STEP 2: DETECT THE PR AND GENERATE CHANGELOG
+      # ==================================================
+      - name: Generate changelog entry
+        id: generate
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+
+          script: |
+            const fs = require('fs');
+
+            const { owner, repo } = context.repo;
+            const workflowRun = context.payload.workflow_run;
+
+            core.setOutput('changelog_changed', 'false');
+            core.setOutput('pr_number', '');
+
+            // Identify the commit associated with the successful run.
+            const sha = workflowRun.head_sha;
+
+            core.info(`Successful staging commit: ${sha}`);
+
+            // Find pull requests associated with this commit.
+            const associatedPRs = await github.paginate(
+              github.rest.repos.listPullRequestsAssociatedWithCommit,
+              {
+                owner,
+                repo,
+                commit_sha: sha,
+                per_page: 100
+              }
+            );
+
+            // Only consider merged PRs targeting staging.
+            const mergedPRs = associatedPRs
+              .filter(pr =>
+                pr.base.ref === 'staging' &&
+                pr.merged_at &&
+                pr.state === 'closed'
+              )
+              .sort(
+                (a, b) =>
+                  new Date(b.merged_at) - new Date(a.merged_at)
+              );
+
+            if (mergedPRs.length === 0) {
+              core.notice(
+                'No merged staging PR was associated with this commit. ' +
+                'No changelog entry will be created.'
+              );
+              return;
+            }
+
+            // Select the most recently merged matching PR.
+            const pr = mergedPRs[0];
+
+            core.info(`Processing PR #${pr.number}`);
+            core.info(`PR title: ${pr.title}`);
+
+            // Locate the existing changelog.
+            const changelogPath = 'changelog.md';
+
+            if (!fs.existsSync(changelogPath)) {
+              throw new Error(
+                'changelog.md was not found in the staging checkout.'
+              );
+            }
+
+            const originalChangelog = fs.readFileSync(
+              changelogPath,
+              'utf8'
+            );
+
+            // Prevent duplicate PR entries.
+            const prMarker = new RegExp(
+              `^### PR\\s*:\\s*["']?#${pr.number}["']?\\s*$`,
+              'm'
+            );
+
+            if (prMarker.test(originalChangelog)) {
+              core.notice(
+                `PR #${pr.number} is already recorded.`
+              );
+              return;
+            }
+
+            // Read the latest version from the existing changelog.
+            const versionMatch = originalChangelog.match(
+              /^### Version\s*:\s*["']?(\d+\.\d+\.\d+)["']?\s*$/m
+            );
+
+            if (!versionMatch) {
+              throw new Error(
+                'Could not find a semantic version in changelog.md.'
+              );
+            }
+
+            const currentVersion = versionMatch[1];
+
+            // Identify the version category from the PR title.
+            // Examples:
+            // feat: add dashboard
+            // fix: resolve login issue
+            // feat!: introduce breaking change
+            // feat(frontend)!: introduce breaking change
+            const titleMatch = pr.title.trim().match(
+              /^(major|feat|fix|perf|test|docs|style|refactor|build|ci|chore|revert)(?:\([^)]+\))?(!)?:/i
+            );
+
+            const kind = titleMatch
+              ? titleMatch[1].toLowerCase()
+              : '';
+
+            const breakingChange = Boolean(
+              titleMatch && titleMatch[2] === '!'
+            );
+
+            const [major, minor, patch] =
+              currentVersion.split('.').map(Number);
+
+            // Default: retain the current version.
+            let nextVersion = currentVersion;
+
+            // MAJOR: breaking changes or explicit major release.
+            if (breakingChange || kind === 'major') {
+              nextVersion = `${major + 1}.0.0`;
+            }
+
+            // MINOR: new feature.
+            else if (kind === 'feat') {
+              nextVersion = `${major}.${minor + 1}.0`;
+            }
+
+            // PATCH: fix, performance improvement, or revert.
+            else if (
+              kind === 'fix' ||
+              kind === 'perf' ||
+              kind === 'revert'
+            ) {
+              nextVersion = `${major}.${minor}.${patch + 1}`;
+            }
+
+            // test, docs, and other non-release categories
+            // keep the existing version.
+            core.info(`Previous version: ${currentVersion}`);
+            core.info(`Next version: ${nextVersion}`);
+
+            // Retrieve all available commits belonging to this PR.
+            const commits = await github.paginate(
+              github.rest.pulls.listCommits,
+              {
+                owner,
+                repo,
+                pull_number: pr.number,
+                per_page: 100
+              }
+            );
+
+            // Convert commit messages into readable single-line entries.
+            const commitMessages = commits
+              .map(commit =>
+                String(commit.commit.message || '')
+                  .trim()
+                  .replace(/\r\n/g, '\n')
+                  .split('\n')
+                  .map(line => line.trim())
+                  .filter(Boolean)
+                  .join(' — ')
+              )
+              .filter(Boolean);
+
+            if (commitMessages.length === 0) {
+              throw new Error(
+                `No commit messages were found for PR #${pr.number}.`
+              );
+            }
+
+            core.info(
+              `Collected ${commitMessages.length} commit message(s).`
+            );
+
+            // Generate the date using Indian Standard Time.
+            const date = new Intl.DateTimeFormat('en-GB', {
+              timeZone: 'Asia/Kolkata',
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric'
+            })
+              .format(new Date())
+              .replace(/\//g, '-');
+
+            // Format changes as Markdown bullet points.
+            const changes = commitMessages
+              .map(message => `- ${message}`)
+              .join('\n');
+
+            // Construct the new entry.
+            const newEntry =
+              `## Date : "${date}"\n` +
+              `### Version : "${nextVersion}"\n` +
+              `### PR : "#${pr.number}"\n\n` +
+              `Changes:\n${changes}\n\n\n`;
+
+            // Insert the new entry at the top and preserve history.
+            fs.writeFileSync(
+              changelogPath,
+              newEntry + originalChangelog,
+              'utf8'
+            );
+
+            // Pass results to subsequent workflow steps.
+            core.setOutput('changelog_changed', 'true');
+            core.setOutput('pr_number', String(pr.number));
+
+            core.notice(
+              `Updated changelog.md for PR #${pr.number}: ` +
+              `${currentVersion} -> ${nextVersion}`
+            );
+
+      # ==================================================
+      # STEP 3: COMMIT AND PUSH TO STAGING ONLY
+      # ==================================================
+      - name: Commit and push changelog to staging
+        if: steps.generate.outputs.changelog_changed == 'true'
+        env:
+          PR_NUMBER: ${{ steps.generate.outputs.pr_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git config user.name "github-actions[bot]"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add changelog.md
+
+          if git diff --cached --quiet; then
+            echo "No changelog changes to commit."
+            exit 0
+          fi
+
+          git commit \
+            -m "docs(changelog): update for PR #${PR_NUMBER}"
+
+          # Push explicitly to staging, never main.
+          git push origin HEAD:staging
+
+          echo "Changelog pushed to staging successfully."
+
+      # ==================================================
+      # STEP 4: PREPARE SSH CONNECTION
+      # ==================================================
+      - name: Configure staging server SSH
+        if: steps.generate.outputs.changelog_changed == 'true'
+        shell: bash
+        env:
+          STAGING_SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+          STAGING_KNOWN_HOSTS: ${{ secrets.STAGING_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+
+          test -n "$STAGING_SSH_KEY" || {
+            echo "STAGING_SSH_KEY is missing."
+            exit 1
+          }
+
+          test -n "$STAGING_KNOWN_HOSTS" || {
+            echo "STAGING_KNOWN_HOSTS is missing."
+            exit 1
+          }
+
+          mkdir -p "$HOME/.ssh"
+          chmod 700 "$HOME/.ssh"
+
+          printf '%s\n' "$STAGING_SSH_KEY" \
+            > "$HOME/.ssh/staging_key"
+
+          printf '%s\n' "$STAGING_KNOWN_HOSTS" \
+            > "$HOME/.ssh/known_hosts"
+
+          chmod 600 "$HOME/.ssh/staging_key"
+          chmod 600 "$HOME/.ssh/known_hosts"
+
+      # ==================================================
+      # STEP 5: SYNCHRONIZE SERVER CHECKOUT ONLY
+      # No frontend build or PM2 restart.
+      # ==================================================
+      - name: Sync staging server
+        if: steps.generate.outputs.changelog_changed == 'true'
+        shell: bash
+        env:
+          STAGING_USER: ${{ secrets.STAGING_USER }}
+          STAGING_HOST: ${{ secrets.STAGING_HOST }}
+        run: |
+          set -euo pipefail
+
+          test -n "$STAGING_USER" || {
+            echo "STAGING_USER is missing."
+            exit 1
+          }
+
+          test -n "$STAGING_HOST" || {
+            echo "STAGING_HOST is missing."
+            exit 1
+          }
+
+          ssh \
+            -i "$HOME/.ssh/staging_key" \
+            -o IdentitiesOnly=yes \
+            -o BatchMode=yes \
+            -o ConnectTimeout=15 \
+            -o StrictHostKeyChecking=yes \
+            "${STAGING_USER}@${STAGING_HOST}" \
+            'bash -se' <<'REMOTE'
+          set -eu
+
+          cd /home/saroj/mst-academy-frontend-staging
+
+          # Safety check: only synchronize the staging branch.
+          if [ "$(git branch --show-current)" != "staging" ]; then
+            echo "ERROR: Server checkout is not on staging."
+            exit 1
+          fi
+
+          # Do not overwrite local changes on the server.
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "ERROR: Server working tree is not clean."
+            git status --short
+            exit 1
+          fi
+
+          git fetch origin staging
+          git merge --ff-only origin/staging
+
+          echo "Server staging checkout synchronized."
+          git status --short
+          REMOTE
+
+      # ==================================================
+      # STEP 6: CLEAN UP TEMPORARY SSH KEY
+      # ==================================================
+      - name: Remove temporary SSH key
+        if: always()
+        shell: bash
+        run: |
+          if [ -d "$HOME/.ssh" ]; then
+            rm -f "$HOME/.ssh/staging_key"
+          fi
