@@ -1,3 +1,11 @@
+## Date : "03-11-2026"
+### Version : "0.3.1"
+### PR : "#80"
+
+Changes:
+- test: verify changelog automation
+
+
 ## Date : "19-10-2026"
 ### Version : "0.3.1"
 
