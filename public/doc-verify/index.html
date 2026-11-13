@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MST DocVerify — Create a verifiable document</title>
+  <meta name="description" content="Place a signature, names, stamp and a blockchain verification QR on any certificate or document, and register it on MST Blockchain." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Great+Vibes&family=Dancing+Script:wght@600&family=Playfair+Display:wght@500;700&family=Cinzel:wght@600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../MST_logo_cropped.png" alt="" onerror="this.remove()" />
+      DocVerify <small>by MST Blockchain</small>
+    </a>
+    <span class="spacer"></span>
+    <span class="net-pill" id="netPill">MST Testnet</span>
+    <a class="btn dark sm" href="verify.html">Verify<span class="long">&nbsp;a document</span></a>
+    <button class="btn dark sm" id="walletBtn" type="button">Connect wallet</button>
+  </header>
+
+  <main class="layout">
+    <!-- ============ LEFT: inputs ============ -->
+    <aside class="left">
+      <div class="side">
+        <section class="panel">
+          <h2><span class="num">1</span> Document</h2>
+          <div class="body">
+            <div class="drop" id="docDrop" tabindex="0" role="button" aria-label="Upload document">
+              <strong>Upload certificate or document</strong>
+              PNG, JPG or PDF · drag &amp; drop or click
+            </div>
+            <input type="file" id="docInput" accept="image/png,image/jpeg,image/webp,application/pdf" hidden />
+            <div id="docInfo" class="small muted" style="margin-top:8px"></div>
+            <div id="pdfPageRow" class="row" style="margin-top:8px; display:none">
+              <span class="small muted">PDF page</span>
+              <select id="pdfPage" class="grow"></select>
+            </div>
+            <button class="btn sm" id="sampleBtn" type="button" style="margin-top:10px">Use a sample certificate</button>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2><span class="num">2</span> Details</h2>
+          <div class="body">
+            <label class="field"><span>Recipient name *</span><input type="text" id="f_recipientName" placeholder="e.g. Aarav Sharma" maxlength="80" /></label>
+            <label class="field"><span>Signee name *</span><input type="text" id="f_signeeName" placeholder="e.g. Dr. Meera Iyer" maxlength="80" /></label>
+            <label class="field"><span>Document title</span><input type="text" id="f_title" placeholder="e.g. Certificate of Completion" maxlength="120" /></label>
+            <label class="field"><span>Issuing organisation</span><input type="text" id="f_issuer" placeholder="e.g. MST Academy" maxlength="80" /></label>
+            <div class="row">
+              <label class="field grow"><span>Issued on</span><input type="date" id="f_issuedOn" /></label>
+              <label class="field grow"><span>Document ID</span><input type="text" id="f_docId" readonly /></label>
+            </div>
+            <p class="small muted" style="margin:0">These details are fingerprinted and stored encrypted on MST Blockchain. They lock once registered.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2><span class="num">3</span> Elements</h2>
+          <div class="body">
+            <p class="small muted" style="margin-top:0">Switch an element on, then drag it on the document. Drag the corner square to resize.</p>
+            <ul class="el-list" id="elList"></ul>
+            <input type="file" id="sigInput" accept="image/*" hidden />
+            <input type="file" id="stampInput" accept="image/*" hidden />
+          </div>
+        </section>
+      </div>
+    </aside>
+
+    <!-- ============ CENTRE: stage ============ -->
+    <section class="stage-wrap">
+      <div class="panel toolbar" id="toolbar"><span class="muted small">Select an element on the document to style it.</span></div>
+      <div class="stage-outer" id="stageOuter">
+        <div class="empty-stage" id="emptyStage">
+          <div class="big">📄</div>
+          <strong>Upload a document to begin</strong>
+          <p class="small">Certificates, letters, transcripts — any image or PDF. Then place the signature, names, stamp and verification QR wherever you like.</p>
+        </div>
+        <div class="stage" id="stage" hidden>
+          <canvas class="base" id="baseCanvas"></canvas>
+          <div class="guide" id="guideV"></div>
+          <div class="guide h" id="guideH"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ RIGHT: chain + export ============ -->
+    <aside class="right">
+      <div class="side">
+        <section class="panel">
+          <h2><span class="num">4</span> Register on blockchain</h2>
+          <div class="body">
+            <ol class="steps" id="regSteps">
+              <li data-s="doc">Upload a document</li>
+              <li data-s="fields">Fill recipient &amp; signee names</li>
+              <li data-s="wallet">Connect a wallet on MST Testnet</li>
+              <li data-s="reg">Register the record</li>
+            </ol>
+            <div id="regStatus"></div>
+            <button class="btn primary block" id="registerBtn" type="button" disabled>Register on MST Testnet</button>
+            <button class="btn block sm" id="unlockBtn" type="button" style="margin-top:8px" hidden>Edit details &amp; register again</button>
+            <div class="divider"></div>
+            <label class="field">
+              <span>QR code opens</span>
+              <select id="qrTarget">
+                <option value="verify">Verification page (Verified / Not verified + explorer link)</option>
+                <option value="explorer">Explorer transaction on testnet.mstscan.com</option>
+              </select>
+            </label>
+            <p class="small muted" style="margin:0" id="qrHint"></p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2><span class="num">5</span> Export</h2>
+          <div class="body">
+            <div class="btn-grid">
+              <button class="btn" id="pngBtn" type="button" disabled>PNG image</button>
+              <button class="btn" id="jpgBtn" type="button" disabled>JPG image</button>
+              <button class="btn" id="copyLinkBtn" type="button" disabled>Copy verify link</button>
+              <a class="btn" id="explorerBtn" target="_blank" rel="noopener" aria-disabled="true">View on explorer</a>
+            </div>
+            <p class="small muted" style="margin-bottom:0">The verify link carries the decryption key after <span class="mono">#</span>, so share it only with people who should see the details.</p>
+          </div>
+        </section>
+
+        <section class="panel" id="recentPanel" hidden>
+          <h2>Recent on this device</h2>
+          <div class="body"><ul class="recent" id="recentList"></ul></div>
+        </section>
+      </div>
+    </aside>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="editor.js"></script>
+</body>
+</html>

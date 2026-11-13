@@ -42,6 +42,12 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  async redirects() {
+    return [
+      // Static document-verification app lives in public/doc-verify.
+      { source: "/doc-verify", destination: "/doc-verify/index.html", permanent: false },
+    ];
+  },
   async rewrites() {
     return [
       {

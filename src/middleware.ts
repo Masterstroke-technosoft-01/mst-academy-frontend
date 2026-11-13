@@ -24,6 +24,7 @@ const PUBLIC_PATHS = [
   "/glossary",
   "/about",
   "/compare",
+  "/doc-verify",
 ];
 
 export function middleware(request: NextRequest) {

@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MST DocVerify — Verify a document</title>
+  <meta name="description" content="Check a document's details against its record on MST Blockchain." />
+  <meta name="referrer" content="no-referrer" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="index.html">
+      <img src="../MST_logo_cropped.png" alt="" onerror="this.remove()" />
+      DocVerify <small>by MST Blockchain</small>
+    </a>
+    <span class="spacer"></span>
+    <span class="net-pill" id="netPill">MST Testnet</span>
+    <a class="btn dark sm" href="index.html">Create<span class="long">&nbsp;a document</span></a>
+  </header>
+
+  <main class="verify-main">
+    <section class="verdict" id="verdict" aria-live="polite">
+      <div class="icon" id="vIcon">🔍</div>
+      <h1 id="vTitle">Verify a document</h1>
+      <p id="vText">Scan the QR code on the document, or paste its verification link or transaction hash below.</p>
+    </section>
+
+    <section class="card" id="lookupCard">
+      <h2>Look up a record</h2>
+      <div class="body">
+        <form id="lookupForm" class="row">
+          <input type="text" id="lookupInput" class="grow" placeholder="Verification link or transaction hash (0x…)" aria-label="Verification link or transaction hash" />
+          <button class="btn primary" type="submit">Verify</button>
+        </form>
+      </div>
+    </section>
+
+    <section class="card" id="detailsCard" hidden>
+      <h2>Details recorded on chain</h2>
+      <div class="body">
+        <p class="small muted" style="margin-top:0">Compare these with what is printed on the document. They must match exactly.</p>
+        <dl class="kv" id="details"></dl>
+      </div>
+    </section>
+
+    <section class="card" id="manualCard" hidden>
+      <h2>Check against the document</h2>
+      <div class="body">
+        <p class="small muted" style="margin-top:0" id="manualIntro">Type the details exactly as printed on the document. They are fingerprinted in your browser and compared with the fingerprint stored on MST Blockchain.</p>
+        <form id="manualForm">
+          <div class="form-grid" id="manualFields"></div>
+          <button class="btn primary" type="submit">Compare with blockchain</button>
+          <div id="manualResult" style="margin-top:12px"></div>
+        </form>
+      </div>
+    </section>
+
+    <section class="card" id="chainCard" hidden>
+      <h2>Blockchain record</h2>
+      <div class="body">
+        <dl class="kv" id="chain"></dl>
+        <div class="row" style="margin-top:14px; flex-wrap:wrap">
+          <a class="btn" id="explorerLink" target="_blank" rel="noopener">View on testnet.mstscan.com ↗</a>
+        </div>
+      </div>
+    </section>
+
+    <p class="small muted" style="text-align:center; margin-top:24px">
+      Verification runs entirely in your browser. The document's details are stored on chain encrypted; only links that carry the key can reveal them.
+    </p>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="common.js"></script>
+  <script src="verify.js"></script>
+</body>
+</html>
