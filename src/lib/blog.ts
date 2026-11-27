@@ -1,5 +1,5 @@
-const CMS_URL = (process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy").replace(/\/+$/, "");
-const SITE_TOKEN = process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "site_token_demo_mst_academy_1785489667016";
+export const CMS_URL = (process.env.CMS_API_URL || process.env.NEXT_PUBLIC_CMS_API_URL || "").trim().replace(/\/+$/, "");
+export const SITE_TOKEN = (process.env.CMS_SITE_TOKEN || process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "").trim();
 
 export interface FAQItem {
   question: string;
@@ -16,6 +16,7 @@ export interface BlogPost {
   description?: string;
   subHeading?: string;
   metaDescription?: string;
+  metaKeywords?: string[] | string;
   excerpt?: string;
   content?: string;
   body?: string;
@@ -36,7 +37,7 @@ export interface BlogPost {
   author?: string | { name?: string; avatar?: string; bio?: string; url?: string };
   category?: string;
   tags?: string[];
-  keywords?: string[];
+  keywords?: string[] | string;
   createdAt?: string;
   publishedAt?: string;
   updatedAt?: string;
@@ -48,7 +49,7 @@ export interface BlogPost {
 export const FEATURED_BLOGS: BlogPost[] = [];
 
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
-  if (!slug) return null;
+  if (!slug || !CMS_URL || !SITE_TOKEN) return null;
 
   try {
     const url = `${CMS_URL}/api/v1/connector/posts/${encodeURIComponent(slug)}`;
@@ -78,6 +79,8 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
 }
 
 export async function getAllPosts(limit?: number): Promise<BlogPost[]> {
+  if (!CMS_URL || !SITE_TOKEN) return [];
+
   try {
     const url = new URL(`${CMS_URL}/api/v1/connector/posts`);
     if (limit) url.searchParams.set("limit", limit.toString());
@@ -107,6 +110,32 @@ export async function getAllPosts(limit?: number): Promise<BlogPost[]> {
   return [];
 }
 
+function normalizeKeywords(value?: string | string[]): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((k) => k.trim()).filter(Boolean);
+  }
+  return value
+    .split(",")
+    .map((k) => k.trim())
+    .filter(Boolean);
+}
+
+/**
+ * Collects deduplicated SEO keywords from all supported CMS keyword fields.
+ */
+export function getPostKeywords(post: BlogPost): string[] {
+  return Array.from(
+    new Set([
+      ...normalizeKeywords(post.metaKeywords),
+      ...normalizeKeywords(post.keywords),
+      ...normalizeKeywords(post.primaryKeyword),
+      ...normalizeKeywords(post.supportKeywords),
+      ...normalizeKeywords(post.tags),
+    ])
+  );
+}
+
 export function generateBlogSchemas(post: BlogPost, slug: string) {
   const headline = post.heading || post.title || post.metaTitle || "Blog Post";
   const description =
@@ -131,10 +160,7 @@ export function generateBlogSchemas(post: BlogPost, slug: string) {
       ? post.author.url
       : "https://masterstroke.academy";
 
-  const articleKeywords = post.keywords || [
-    ...(post.primaryKeyword ? [post.primaryKeyword] : []),
-    ...(post.supportKeywords || []),
-  ];
+  const articleKeywords = getPostKeywords(post);
 
   const articleSchema = {
     "@context": "https://schema.org",

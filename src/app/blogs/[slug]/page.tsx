@@ -3,10 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Script from "next/script";
 import { Calendar, User, Clock, ArrowLeft, Sparkles, BookOpen } from "lucide-react";
-import { getPostBySlug, generateBlogSchemas } from "@/lib/blog";
-
-const CMS_URL = (process.env.NEXT_PUBLIC_CMS_API_URL || "https://cms-api.masterstroke.academy").replace(/\/+$/, "");
-const SITE_TOKEN = process.env.NEXT_PUBLIC_CMS_SITE_TOKEN || "site_token_demo_mst_academy_1785489667016";
+import { CMS_URL, SITE_TOKEN, getPostBySlug, getPostKeywords, generateBlogSchemas } from "@/lib/blog";
 
 type Props = {
   params: Promise<{ slug: string }>;
@@ -37,11 +34,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const rawImage = post.ogImage || post.coverImage || post.image || post.featuredImage || post.cardImage || `/api/og?title=${encodeURIComponent(ogTitle)}`;
   const absoluteOgImage = rawImage.startsWith("http") ? rawImage : `https://masterstroke.academy${rawImage}`;
 
-  const allKeywords = [
-    ...(post.primaryKeyword ? [post.primaryKeyword] : []),
-    ...(post.supportKeywords || []),
-    ...(post.tags || []),
-  ];
+  const allKeywords = getPostKeywords(post);
 
   return {
     title: { absolute: title.includes("Masterstroke Academy") ? title : `${title} | Masterstroke Academy` },
@@ -238,13 +231,13 @@ export default async function BlogPostPage({ params }: Props) {
               [&>a]:text-[var(--mst-red)] [&>a]:underline hover:[&>a]:text-[var(--mst-red-light)]"
             dangerouslySetInnerHTML={{ __html: content }}
           />
-        ) : (
+        ) : CMS_URL && SITE_TOKEN ? (
           /* Client widget fallback if content is served via widget */
           <div>
             <Script src={`${CMS_URL}/widget.js`} strategy="afterInteractive" />
             <div data-widget="post" data-token={SITE_TOKEN} data-slug={slug} />
           </div>
-        )}
+        ) : null}
 
         {/* Footer CTA */}
         <div className="mt-16 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center shadow-lg sm:p-10">
